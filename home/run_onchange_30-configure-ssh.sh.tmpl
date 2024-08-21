@@ -7,8 +7,8 @@ set -euo pipefail
 mkdir -p "${HOME}/.ssh"
 chmod 700 "${HOME}/.ssh"
 
+{{- if and (eq .chezmoi.hostname "work-laptop") .install_op }}
 eval $(op signin --account my)
-
 keys=(id_rsa tim.mcfadden.test )
 for key in ${keys[@]}; do
 
@@ -23,3 +23,4 @@ for key in ${keys[@]}; do
 done
 
 op read "op://private/ssh config/notesPlain" > "${HOME}/.ssh/config"
+{{ end }}
