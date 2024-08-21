@@ -22,6 +22,14 @@ fi
 load-keychain
 {{- end }}
 
+# Source all completions ######################################################
+if [[ -d ${HOME}/.config/zsh/completions ]]; then
+  for f in ${HOME}/.config/zsh/completions/*; do
+      source "${f}"
+  done
+fi
+###############################################################################
+
 # Eval all teh thingz
 eval "$(direnv hook zsh)"
 eval "$(starship init zsh)"
