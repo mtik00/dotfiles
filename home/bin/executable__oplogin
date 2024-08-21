@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+
+# WARNING: THIS FILE IS MANAGED BY CHEZMOI
+
+set -euo pipefail
+
+SESSION_VAR=$(env| grep OP_SESSION | cut -d '=' -f1)
+
+if [[ -n "${SESSION_VAR}" ]]; then
+  eval $(op signin --session ${SESSION_VAR})
+else
+  eval $(op signin --account my)
+fi
