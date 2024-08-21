@@ -7,7 +7,7 @@ set -euo pipefail
 mkdir -p "${HOME}/.ssh"
 chmod 700 "${HOME}/.ssh"
 
-{{- if and (eq .chezmoi.hostname "work-laptop") .install_op }}
+{{- if eq (env "CHEZ_CONFIG") "work-laptop" }}
 eval $(op signin --account my)
 keys=(id_rsa tim.mcfadden.test )
 for key in ${keys[@]}; do
