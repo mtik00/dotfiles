@@ -9,8 +9,18 @@ WARNING: Some template variables require the appropriate `CHEZ_CONFIG` environme
 When you need to update the dotfiles, either for a new install or need to update to current changes, run the following 
 command.  You can run this multiple times without issues.
 
+### New Install
+
+You should set `${CHEZ_CONFIG}` first:
+
 ```shell
-export CHEZ_CONFIG=work-laptop \
+export CHEZ_CONFIG=work-laptop
+```
+
+You won't need to do this again.  The chezmoi update process will install scrips to ensure it's current.
+
+### Get Updates
+```shell
 curl -Ls https://raw.githubusercontent.com/mtik00/dotfiles/main/setup.sh > /tmp/setup.sh \
     && bash /tmp/setup.sh
 ```
