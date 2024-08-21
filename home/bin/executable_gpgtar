@@ -1,0 +1,168 @@
+#!/usr/bin/env bash
+# WARNING: This file is managed by Ansible.
+# This script uses an existing GPG key to encrypt/decrypt files and directories.
+#
+# - Configuration -
+#
+# This script supports a configuration file in the working directory.  The file
+# must be named .gpgtar.conf
+#
+# This file will be sourced and used as default arguments.  Values supported:
+#   gpgtar_filename: The name of the directory or filename to include in the tar
+#   gpgtar_outfile: The name of the output file
+#
+# - GPG Keys -
+#
+# You'll need to have an existing "known" GPG key in order to perform encryption
+# and decryption operations.  You can see this using:
+#
+#   gpg --list-keys
+#
+# The "recipient" used in this script should either be the key ID (40 hex characters)
+# or a name associated with the key.
+#
+# If you get a warning like "There is no assurance this key belongs to the named user",
+# you need to change the trust level of the key after you import it.
+#
+#    gpg --edit-key <key ID>
+#    gpg> trust
+#    <set an appropriate trust level>
+#    gpg> quit
+set -euo pipefail
+IFS=$'\n\t'
+
+if [[ -f .gpgtar.conf ]]; then
+    # shellcheck disable=SC1091
+    source .gpgtar.conf
+fi
+
+EXIT_CODE=0
+UNTAR=0
+LIST=0
+FILENAME="${gpgtar_filename:-}"
+OUTFILE="${gpgtar_outfile:-}"
+GPG_RECIPIENT_ID="${GPG_RECIPIENT_ID:-}"
+
+
+function log.error() {
+    echo "$(date +'%Y-%m-%d %H:%M:%S%z') [ERROR] $*"
+}
+function log.warning() {
+    echo "$(date +'%Y-%m-%d %H:%M:%S%z') [WARNING] $*"
+}
+function log() {
+    echo "$(date +'%Y-%m-%d %H:%M:%S%z') [INFO] $*"
+}
+
+function base_usage() {
+    cat <<EOF
+Usage:      $(basename "${0}") [flag] (filename|dirname)
+This script is used to create/expand compressed and encrypted files.
+Available Flags:
+    -u|--untar       Untar the file instead of creating one (use filename)
+    -r|--recipient   The recipient of the encrypted file.  You should use _your_
+                     key ID/name if the file is only for your use.
+                     Also reads ${GPG_RECIPIENT_ID}.
+    -o|--outfile     The name of the output file (optional)
+    -l|--list        List the contents of the encrypted file
+    -h|--help        Print help
+EOF
+}
+
+function process_args() {
+    while test -n "${1:-}"; do
+        case "$1" in
+            -h|--help)
+                base_usage
+                shift
+                exit 1
+                ;;
+            -u|--untar)
+                UNTAR=1
+                shift
+                ;;
+            -l|--list)
+                LIST=1
+                shift
+                ;;
+            -r|--recipient)
+                GPG_RECIPIENT_ID="$2"
+                shift 2
+                ;;
+            *)
+                FILENAME="$1"
+                shift
+                ;;
+        esac
+    done
+}
+
+function validate_args() {
+    error=0
+    if [[ -z "${FILENAME}" ]]; then
+        log.error "You must specify a filename/dirname"
+        error=1
+    fi
+
+    if [[ "${UNTAR}" == "0" ]] && [[ -z "${GPG_RECIPIENT_ID}" ]]; then
+        log.error "You must set the recipient to encrypt the file/directory"
+        error=1
+    fi
+
+    if [[ error -gt 0 ]]; then
+        base_usage
+        exit 99
+    fi
+}
+
+function create() {
+    dirname=$1
+    outfile="${OUTFILE}"
+
+    if [[ -z "${outfile}" ]]; then
+        outfile=$(basename "${dirname}").tgz.gpg
+    fi
+
+    if [[ -f "${outfile}" ]]; then
+        log.warning "${outfile} already exists."
+        echo -n  "Ok to overwrite [Yn]? "
+        read -r user_input
+        if [[ ! "${user_input,,}" = "y" ]]; then
+            log.warning "quitting"
+            exit 1
+        fi
+        chmod 0600 "${outfile}"
+    fi
+
+    tar czpf - "${dirname}" | gpg -e --yes --recipient "${GPG_RECIPIENT_ID}" --cipher-algo aes256 -o "${outfile}"
+    chmod 0400 "${outfile}"
+    log "${outfile} created with key '${GPG_RECIPIENT_ID}'"
+}
+
+function untar() {
+    filename=$1
+    gpg -d "${filename}" | tar xzvf -
+}
+
+function list() {
+    filename=$1
+    gpg -d "${filename}" | tar -ztvf -
+}
+
+function main() {
+    # shellcheck disable=SC2048,SC2086
+    process_args $*
+    validate_args
+
+    if [[ "${UNTAR}" == "1" ]]; then
+        untar "${FILENAME}"
+    elif [[ "${LIST}" == "1" ]]; then
+        list "${FILENAME}"
+    else
+        create "${FILENAME}"
+    fi
+}
+
+main "$*"
+
+exit $EXIT_CODE
