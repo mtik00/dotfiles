@@ -8,7 +8,8 @@ mkdir -p "${HOME}/.ssh"
 chmod 700 "${HOME}/.ssh"
 
 {{- if eq (env "CHEZ_CONFIG") "work-laptop" }}
-eval $(op signin --account my)
+${HOME}/bin/_oplogin
+
 keys=(id_rsa tim.mcfadden.test )
 for key in ${keys[@]}; do
 
