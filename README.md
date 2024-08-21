@@ -2,9 +2,10 @@
 
 Home directory configuration using [chezmoi](https://www.chezmoi.io/).
 
-## New Install
+## New Install / Get Updates
 
-Run this command:
+When you need to update the dotfiles, either for a new install or need to update to current changes, run the following 
+command.  You can run this multiple times without issues.
 
 ```shell
 curl -Ls https://raw.githubusercontent.com/mtik00/dotfiles/main/setup.sh > /tmp/setup.sh \

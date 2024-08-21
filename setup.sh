@@ -7,5 +7,5 @@ PATH="~/bin:${PATH}"
 if [[ -d ~/.local/share/chezmoi/.git ]]; then
     chezmoi update
 else
-    pushd "${HOME}" && sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply https://github.com/mtik00/chezmoi-wsl.git && popd
+    pushd "${HOME}" && sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply mtik00 && popd
 fi
