@@ -1,7 +1,7 @@
+{{- if .github_askpass }}
 #!/usr/bin/env bash
 
 # WARNING: THIS FILE IS MANAGED BY CHEZMOI
 
-{{- if .github_askpass }}
 export GIT_ASKPASS="${HOME}/bin/_askpass"
 {{ end }}
