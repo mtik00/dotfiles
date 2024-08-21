@@ -15,7 +15,10 @@ zstyle ':completion:*' menu select
 fpath+=~/.zfunc
 
 {{ if .install_op }}
-eval $(op signin --account my)
+if ! env|grep OP_SESSION 2>&1 >/dev/null; then
+    eval $(op signin --account my)
+fi
+
 load-keychain
 {{- end }}
 
