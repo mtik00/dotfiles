@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# WARNING: This file is managed by Ansible.
+
+set -euo pipefail
+IFS=$'\n\t'
+
+
+eval $(op signin my --session ${OP_SESSION_my:-def})
+
+# Update our shell setup file so new windows get this too.
+chmod 600 ~/.op-session
+echo "export OP_SESSION_my=\""${OP_SESSION_my}"\"" > ~/.op-session
+
+source ~/.op-session
