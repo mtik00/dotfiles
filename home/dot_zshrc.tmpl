@@ -3,10 +3,11 @@
 
 [[ -f ~/.zprofile ]] && source ~/.zprofile
 
-# Fix bindkeys for some reason
+# Change bindkeys to my defaults
+# https://linux.die.net/man/1/zshzle
+bindkey -v
 bindkey '\e[4~' end-of-line
 bindkey '\e[1~' beginning-of-line
-bindkey -v
 bindkey '^R' history-incremental-search-backward
 bindkey "^S" history-incremental-search-forward
 
