@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+
+case "$1" in
+    Username*) exec op read "op://private/GitHub Access Token/username" ;;
+    Password*) exec op read "op://private/GitHub Access Token/password" ;;
+esac
