@@ -1,4 +1,4 @@
-# WARNING: THIS FILE IS MANAGED BY CHEZMOI
+" WARNING: THIS FILE IS MANAGED BY CHEZMOI
 
 set spell spelllang=en_us
 hi clear SpellBad
