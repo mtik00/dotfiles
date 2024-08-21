@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [[ "{{ .install_op }}" != "true" ]] || [[ -f "${HOME}/bin/op" ]]; then
-  exit 0
-fi
+[[ "{{ .install_op }}" != "true" ]] && exit 0
+[ ! -f "${HOME}/bin/op" ] && exit 0
 
 mkdir -p "${HOME}/.ssh"
 chmod 700 "${HOME}/.ssh"
@@ -14,11 +13,11 @@ keys=(id_rsa tim.mcfadden.test )
 for key in ${keys[@]}; do
 
     if ! [[ -f "${HOME}/.ssh/${key}.pub" ]]; then
-        op read "op://private/${key}/public key" > "${HOME}/.ssh/${key}.pub"
+        op read --force --out-file "${HOME}/.ssh/${key}.pub" "op://private/${key}/${key}.pub"
     fi
 
     if ! [[ -f "${HOME}/.ssh/${key}" ]]; then
-        op read "op://private/${key}/private key" > "${HOME}/.ssh/${key}"
+        op read --force --out-file "${HOME}/.ssh/${key}" "op://private/${key}/${key}"
         chmod 400 "${HOME}/.ssh/${key}"
     fi
 done

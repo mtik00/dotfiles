@@ -2,10 +2,11 @@
 set -euo pipefail
 
 readonly PYTHON_VERSION="3.11.9"
+readonly HOME_BIN="${HOME}/bin"
 
 # Make sure this is here and its in the path
-mkdir -p $HOME/bin
-export PATH="~/bin:${PATH}"
+mkdir -p "${HOME_BIN}"
+export PATH="${HOME_BIN}:${PATH}"
 
 # Some light git setup
 if ! [[ -f ~/.gitconfig ]]; then
@@ -27,7 +28,7 @@ if ! echo $(pyenv global) | grep $PYTHON_VERSION > /dev/null; then
     pyenv install --skip-existing ${PYTHON_VERSION}
     pyenv global ${PYTHON_VERSION}
 else
-    echo "Python ${PYTHON_VERSION} alread installed."
+    echo "Python ${PYTHON_VERSION} already installed."
 fi
 
 # Make sure poetry is installed in global config
@@ -36,10 +37,11 @@ if ! command -v poetry; then
 fi
 
 # Install desk (https://github.com/jamesob/desk)
-if ! [[ -f "${HOME}/bin/desk" ]]; then
-    mkdir -p "${HOME}/bin"
-    curl https://raw.githubusercontent.com/jamesob/desk/master/desk > ~/bin/desk
-    chmod +x ~/bin/desk
+if ! [[ -f "${HOME_BIN}/desk" ]]; then
+    curl https://raw.githubusercontent.com/jamesob/desk/master/desk > "${HOME_BIN}/desk"
+    chmod +x "${HOME_BIN}/desk"
+else
+    echo "desk already installed"
 fi
 
 # Install starship
@@ -56,4 +58,6 @@ if ! command -v fzf > /dev/null; then
     curl -L -o /tmp/fzf.tgz "${FZF_LATEST_URL}"
     tar xzf /tmp/fzf.tgz -C "$HOME/bin"
     rm /tmp/fzf.tgz
+else
+    echo "fzf already installed"
 fi
