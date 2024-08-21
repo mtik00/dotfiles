@@ -1,0 +1,35 @@
+[package]
+disabled = true
+
+[python]
+format = '[${symbol}(${version})]($style)'
+
+[git_status]
+conflicted = '🏳'
+# ahead = '🏎💨'
+# behind = '😰'
+# diverged = '😵'
+up_to_date = ''
+untracked = '🤷'
+stashed = '📦'
+modified = '📝'
+staged = '[++\($count\)](green)'
+renamed = '👅'
+deleted = '🗑'
+ahead = '⇡${count}'
+diverged = '⇕⇡${ahead_count}⇣${behind_count}'
+behind = '⇣${count}'
+
+[custom.desk]
+when = ''' test "$DESK_NAME" '''
+command = 'printf "${DESK_NAME}"'
+format = ' 📝:[$output]($style) '
+
+[custom.ctx]
+when = ''' test "$CTX" '''
+command = 'printf "${CTX}"'
+format = ':[$output]($style) '
+
+[java]
+disabled = true
+

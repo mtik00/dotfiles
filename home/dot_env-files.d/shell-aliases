@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+
+# WARNING: THIS FILE IS MANAGED BY CHEZMOI
+
+alias clean-bash='env -i bash --noprofile --rcfile ~/.bashrc-clean'
+alias cpufreq='watch -n.1 "sensors|grep \"^\(Package id\|Core\) [[:digit:]]\" && cat /proc/cpuinfo | grep \"^[c]pu MHz\"  && sensors|grep fan"'
+alias df='df -lh -x squashfs'
+alias djkill='pkill -f "manage.py runserver"'
+alias dns='dig +noall +answer +search'
+alias functions='declare -F'
+alias isodate='date -u +"%Y-%m-%dT%H:%M:%S.000000Z"'
+alias keygen='ssh-keygen -t ecdsa -b 521'
+alias l='ls -CF --color=auto'
+alias la='ls -A --color=auto'
+alias ll='ls -alFh --group-directories-first --color=auto'
+alias lt='ls -lth --color=auto'
+alias oplogin='bash ~/bin/_oplogin && source ~/.op-session'
+alias osinfo='neofetch  # ascii art os,kernel,bios,cpu,gpu info'
+alias pyc='find . -name "*.py[co]" -o -name __pycache__ -exec echo {} \;'
+alias randpassword='python3 ~/bin/randpassword.py'
+alias randstring='cat /dev/urandom | tr -dc "[:alpha:]" | fold -w ${1:-32} | head -n 1'
+alias randuuid='python3 ~/bin/randuuid.py'
+alias rmpyc='find . -name "*.py[co]" -o -name __pycache__ -exec rm -rf {} +'
+alias tpr='tput reset'
+alias env='bash ~/bin/betterenv'
+
+# Docker stuff #########################################################################################################
+alias d='docker'
+# complete -F _docker d
+alias dbx='docker buildx build --output type=docker'
+alias drb='docker run --rm -it --entrypoint bash'
+alias drs='docker run --rm -it --entrypoint sh'
+alias docker-prune-old-images=_docker_prune_old_images
+########################################################################################################################
+
+alias direnv-init='cp -f ${HOME}/.dotfiles/.envrc-template .envrc && direnv allow'
+
+# 'cuz I can't remember anything
+alias seecert=_seecert
+alias tlscert=_seecert
+alias describecert=_seecert
+
+# backups
+alias bak=_bak
+alias baks=_baks
+
+# Python stuff
+# pyenv with poetry envs are painful when you want to use poetry's envs
+alias poetry-shell='source "$( poetry env list --full-path | grep Activated | cut -d'"'"' '"'"' -f1 )/bin/activate"'
+alias poetry-shell-deactivate=_poetry_deactive_shell

@@ -1,0 +1,25 @@
+#!/usr/bin/env zsh
+# WARNING: THIS FILE IS MANAGED BY CHEZMOI
+
+[[ -f ~/.zprofile ]] && source ~/.zprofile
+
+# Fix bindkeys for some reason
+bindkey '\e[4~' end-of-line
+bindkey '\e[1~' beginning-of-line
+bindkey -v
+bindkey '^R' history-incremental-search-backward
+bindkey "^S" history-incremental-search-forward
+
+autoload -Uz compinit && compinit
+zstyle ':completion:*' menu select
+fpath+=~/.zfunc
+
+{{ if .install_op }}
+eval $(op signin --account my)
+load-keychain
+{{- end }}
+
+# Eval all teh thingz
+eval "$(direnv hook zsh)"
+eval "$(starship init zsh)"
+eval "$(pyenv init -)"

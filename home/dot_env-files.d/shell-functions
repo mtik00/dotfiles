@@ -1,0 +1,142 @@
+#!/usr/bin/env bash
+
+# WARNING: THIS FILE IS MANAGED BY CHEZMOI
+
+function _docker_prune_old_images() {
+  # Try to remove all docker images that were _created_ more than 8 weeks ago.
+  local IFS=$'\n'
+  for line in $(docker images | grep 'months ago\|years ago'); do
+    repo_tag=$(echo $line | awk '{print $1":"$2}')
+    image_id=$(echo $line | awk '{print $3}')
+    echo "repo.tag:  $repo_tag"
+
+    if [[ $repo_tag == *"<none>"* ]]; then
+        repo_tag=$image_id
+    fi
+
+    docker rmi --force $repo_tag
+
+  done
+}
+
+function _seecert () {
+    TEXT=$(openssl s_client -showcerts -servername $1 -connect $1:443 <<< "Q" | openssl x509 -text)
+    echo $TEXT | grep -P "Issuer:"
+    echo $TEXT | grep -P "Subject:"
+    echo ${TEXT} | grep -P "Not (Before|After)"
+}
+
+function _purge_old_kernels() {
+    ##############################################################################
+    # This script removes all older kernels except for the last X number of kernels.
+    # It assumes that the latest kernel is the one installed.  If you have installed 5.x, then
+    # moved back to 4.x, 5.x will not be removed!
+    # This script is based on https://forums.linuxmint.com/viewtopic.php?t=281872#p1554624
+    ##############################################################################
+    KEEP=3
+    CURKERNEL=$(uname -r|sed 's/-*[a-z]//g'|sed 's/-386//g')
+    LINUXPKG="linux-(image|headers|modules|ubuntu-modules|restricted-modules)"
+    METALINUXPKG="linux-(image|headers|restricted-modules)-(generic|i386|server|common|rt|xen)"
+
+    # List all kernels in descending order so we can slice it later
+    ALLKERNELS=$(dpkg-query -W -f '${Version}\n' 'linux-image-[^g]*' | awk '/^$/ {next} {split($0,a,"."); print a[1]"."a[2]"."a[3]}')
+
+    # Turn the string into and array.
+    OLDKERNELS=($(echo $ALLKERNELS))
+
+    # Sort the array to make slicing easier
+    IFS=$'\n' OLDKERNELS=($(sort --version-sort -r <<<"${OLDKERNELS[*]}"))
+    unset IFS
+
+    # Remove our current kernel from the array
+    OLDKERNELS=(${OLDKERNELS[@]//$CURKERNEL/})
+
+    # Slice the array so we keep the last $KEEP kernels
+    OLDKERNELS=(${OLDKERNELS[@]:$KEEP})
+
+    if [[ "${#OLDKERNELS[@]}" -eq "0" ]]; then
+        echo "No old kernels to remove"
+        return
+    fi
+
+    # Turn the array into something `grep` can consume
+    OLDKERNELS="("$(IFS=\| ; echo "${OLDKERNELS[*]}")")"
+
+    # Search through installed packages for all of the old kernel stuff
+    OLDPACKAGES=$(dpkg -l|awk '{print $2}'|grep -E $LINUXPKG |grep -vE $METALINUXPKG|grep -E $OLDKERNELS)
+
+    # We finally get to remove them.
+    sudo apt-get purge $OLDPACKAGES
+}
+
+function randpassword_bash() {
+    # Generate two sets of random passwords: 1 set with special characters and
+    # 1 set with only hex.
+    if [[ "${1}" == *"help"* ]]; then
+        echo "Usage: randpassword [length=32] [count=10]"
+        return
+    fi
+
+    length=${1:-32}
+    count=${2:-10}
+
+    # Passwords with special characters
+    cmd="import random,string;print(\"\\n\".join([\"\".join([random.choice(string.ascii_letters+string.digits+string.punctuation) for _ in range(${length})])for _ in range(${count})]))"
+    python3 -c "${cmd}"
+
+    # Passwords with just hex
+    cmd="import random;print(\"\\n\".join([\"\".join([\"%02x\" % random.randrange(0,255) for _ in range(${length}//2)]) for _ in range(${count})]))"
+    python3 -c "${cmd}"
+}
+
+function pym() {
+    if [[ -z "${1}" ]]; then
+        echo Finds a Python module of the given name
+        echo ...example: pym requests
+        return
+    fi
+
+    python -c "import ${1}; print(${1}.__file__); print('version:', getattr(${1}, '__version__', '??'))"|sed 's/pyc$/py/'
+}
+
+function x() {
+    xdg-open $1 > /dev/null 2>&1
+}
+
+# Creates a backup of a file at its location with the current epoch appended
+function _bak() {
+
+    if [[ -z "$1" ]]; then
+        echo "Create a backup of a file (see also: baks for the sudo version)"
+        echo "USAGE: bak <path to file>"
+    else
+        newname="$1-$(date +%s)"
+        cp $1 $newname
+        echo $newname
+    fi
+}
+function _baks() {
+
+    if [[ -z "$1" ]]; then
+        echo "Create a backup of a file using sudo"
+        echo "USAGE: bak <path to file>"
+    else
+        newname="$1-$(date +%s)"
+        sudo cp $1 $newname
+        echo $newname
+    fi
+}
+
+
+function _poetry_deactive_shell() {
+    envdir=$(basename $VIRTUAL_ENV)
+    path=$(echo ${PATH} | awk -v RS=: -v ORS=: "/${envdir}/ {next} {print}";)
+    unset VIRTUAL_ENV
+    export PATH=$path
+}
+
+function e() {
+    local_path=${1:-.}
+    windows_path=$(wslpath -w "${local_path}")
+    explorer.exe "${windows_path}"
+}

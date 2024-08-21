@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+
+# WARNING: THIS FILE IS MANAGED BY CHEZMOI
+
+export COOKIECUTTER_CONFIG=${HOME}/.config/cookie-cutter.yaml

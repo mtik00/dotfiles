@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# WARNING: This file is managed by chezmoi.
+
+result=1
+
+# Keep trying to remove dangling images and exited processes until nothing
+# is removed.  This fixes the issue of "in use by" issues.
+while [ $result -ne 0 ]; do
+    result=0
+
+    if [[ -n $(docker ps -a -f "status=exited" -f "status=created" -q) ]]; then
+        echo "...removing exited processes"
+        docker rm $(docker ps -a -f "status=exited" -f "status=created" -q)
+        result=$(( $result + 1 ))
+    else
+        echo "...no exited processes"
+    fi
+
+    if [[ -n $(docker images -f "dangling=true" -q) ]]; then
+        echo "...removing dangling images"
+        docker rmi $(docker images -f "dangling=true" -q)
+        result=$(( $result + 1 ))
+    else
+        echo "...no dangling images"
+    fi
+done
+

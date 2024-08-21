@@ -1,0 +1,24 @@
+#!/usr/bin/env zsh
+
+# Stop zsh themes from complaining
+export TERM="xterm-256color"
+
+# Why not the default, though?
+export EDITOR=/usr/bin/vim
+
+# Tells 'less' not to paginate if less than a page
+export LESS="-eirMXF"
+
+# Hook for desk activation ####################################################
+[ -n "$DESK_ENV" ] && source "$DESK_ENV" || true
+
+# Source all files in the env-files.d directory ###############################
+for f in ${HOME}/.env-files.d/*; do
+    source "${f}"
+done
+###############################################################################
+
+export PATH=${HOME}/bin:${HOME}/.pyenv/bin:$PATH:$JAVA_HOME/bin:$MAVEN_HOME/bin
+export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
+export MAVEN_HOME=/opt/apache-maven-3.9.6
+export PYENV_ROOT="$HOME/.pyenv"

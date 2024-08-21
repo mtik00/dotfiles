@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+
+# WARNING: THIS FILE IS MANAGED BY CHEZMOI
+
+function load-keychain() {
+    keys=( id_rsa tim.mcfadden.test )
+    for key in "${keys[@]}"; do
+        echo "adding key: ${key}"
+        /usr/bin/keychain -q --nogui $HOME/.ssh/${key}
+        source $HOME/.keychain/$(hostname)-sh
+    done
+
+    /usr/bin/keychain -l
+}
+
+function add-to-keychain() {
+    key=$1
+
+    if [[ -z "${1}" ]]; then
+        printf "USAGE:  add-keychain <filename of key in ~/.ssh or path of key>\n"
+        return
+    fi
+
+    if [[ -f "${key}" ]]; then
+        keyfile="${key}"
+    elif [[ -f "$HOME/.ssh/${key}" ]]; then
+        keyfile="$HOME/.ssh/${key}"
+    else
+        printf "ERROR: cannot find '${keyfile}'\n"
+        return
+    fi
+
+    printf "adding key: ${key}\n"
+    /usr/bin/keychain -q --nogui "${keyfile}"
+    source $HOME/.keychain/$(hostname)-sh
+
+    /usr/bin/keychain -l
+}

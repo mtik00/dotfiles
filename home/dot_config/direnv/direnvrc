@@ -1,0 +1,5 @@
+# WARNING: THIS FILE IS MANAGED BY CHEZMOI 
+
+direnv_layout_dir() {
+    echo "${direnv_layout_dir:-$PWD/.direnv}"
+}

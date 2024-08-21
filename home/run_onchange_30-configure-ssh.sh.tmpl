@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ "{{ .install_op }}" != "true" ]] || [[ -f "${HOME}/bin/op" ]]; then
+  exit 0
+fi
+
+mkdir -p "${HOME}/.ssh"
+chmod 700 "${HOME}/.ssh"
+
+eval $(op signin --account my)
+
+keys=(id_rsa tim.mcfadden.test )
+for key in ${keys[@]}; do
+
+    if ! [[ -f "${HOME}/.ssh/${key}.pub" ]]; then
+        op read "op://private/${key}/public key" > "${HOME}/.ssh/${key}.pub"
+    fi
+
+    if ! [[ -f "${HOME}/.ssh/${key}" ]]; then
+        op read "op://private/${key}/private key" > "${HOME}/.ssh/${key}"
+        chmod 400 "${HOME}/.ssh/${key}"
+    fi
+done
+
+op read "op://private/ssh config/notesPlain" > "${HOME}/.ssh/config"

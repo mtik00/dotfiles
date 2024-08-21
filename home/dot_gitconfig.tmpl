@@ -1,0 +1,31 @@
+# WARNING: THIS FILE IS MANAGED BY CHEZMOI
+
+[core]
+	editor = vim
+[user]
+	email = {{ .email }}
+	name = {{ .github_email }}
+[difftool]
+	prompt = False
+[mergetool]
+	prompt = False
+[init]
+	defaultBranch = main
+[alias]
+	co = checkout
+	br = branch
+	ci = commit
+	st = status
+	unstage = reset HEAD --
+	make-it-personal = !git config --local user.email \"{{ .github_email }}\" && git config --local user.name \"{{ .github_name }}\"
+	last = log -1
+	l = log -1
+	h = !git log --graph --pretty=format:'%C(bold)%h%Creset%C(magenta)%d%Creset %s %C(yellow)<%an> %C(cyan)(%cr)%Creset' --abbrev-commit --date=relative --color=always|head -n1
+	aliases = config --get-regexp '^alias\\.'
+	site = !explorer.exe $(echo `git config remote.origin.url` | sed "s,git@,https://," | sed "s,.com:,.com/," | sed "s,.git\\$,," | sed "s,.git,," | sed "s,.org:,.org/,") > /dev/null 2>&1
+	undo = reset HEAD~1
+	ignore = "!gi() { curl -sL https://www.toptal.com/developers/gitignore/api/$@ ;}; gi"
+[pull]
+	rebase = true
+[credential]
+	helper = cache

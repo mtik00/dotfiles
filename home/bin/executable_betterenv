@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# A bash script to prevent sensitive variables from being accidentally captured
+# on stdout.  Any env var value with a key that matches PASSWORD|AUTH|TOKEN
+# will be replaced by ********.
+#
+# To override /usr/bin/env, you should create an alias in your shell setup file.
+#     alias env='bash <path to this script>'
+FALSE_VALUES=( SSH_AUTH_SOCK )  # Things we don't want to mask
+SENSITIVE_VALUES=()
+KEYS=()
+VALUES=()
+
+function array_contains() {
+    # Example:
+    # arr=(1 2 3)
+    # [[ $(array_contains  "${arr[@]}" 2) == 1 ]] && printf "it's in there\n" || printf "not found\n"
+    local array=("$@")
+    local value=${array[-1]}
+    unset 'array[-1]'
+
+    for element in "${array[@]}"; do
+        if [[ "${element}" == "${value}" ]]; then
+            echo 1
+            return
+        fi
+    done
+    echo 0
+}
+
+# Run through the first time using the default order.
+# We need to capture the values and store them for later reference.  This will
+# ensure any duplicated value with non-captured names will be masked.
+while IFS='=' read -r -d '' key value; do
+    KEYS+=($key)
+    if [[ "${key}" =~ PASSWORD|AUTH|TOKEN ]] && [[ $(array_contains "${FALSE_VALUES[@]}" "${key}") == 0 ]]; then
+        VALUES+=("********")
+        SENSITIVE_VALUES+=("${value}")
+    else
+        VALUES+=("${value}")
+    fi
+done < <(\env -0)
+
+# Now print things like normal, but _also_ check SENSITIVE_VALUES.
+for i in "${!KEYS[@]}"; do
+    key="${KEYS[$i]}"
+    value="${VALUES[$i]}"
+    if [[ $(array_contains "${SENSITIVE_VALUES[@]}" "${value}") != 0 ]]; then
+        printf "%s=********\n" "${KEYS[$i]}"
+    else
+        printf "%s=%s\n" "${KEYS[$i]}" "${VALUES[$i]}"
+    fi
+done

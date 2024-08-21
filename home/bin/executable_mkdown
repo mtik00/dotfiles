@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# This script is used to pass the output of a command to `python -m markdown -x tables`
+# and then open it up in the Windows default browser.
+
+set -euo pipefail
+
+function e() {
+    local_path=${1:-.}
+    windows_path=$(wslpath -w "${local_path}")
+    explorer.exe "${windows_path}"
+}
+
+# printf "running: %s\n" "$*"
+
+res=$($*)
+
+printf "%s" "${res}" | python -m markdown -x tables > /tmp/output.html && e /tmp/output.html
+
