@@ -4,6 +4,7 @@
 {{- $github_name := promptStringOnce . "github_name" "GitHub full name" "Timothy McFadden" -}}
 {{- $github_username := promptStringOnce . "github_username" "GitHub username" "mtik00" -}}
 {{- $install_op := promptBoolOnce . "install_op" "Install and setup 1Password" -}}
+{{- $github_askpass := promptBoolOnce . "$github_askpass" "Set up askpass for GitHub" -}}
 
 [data]
     name = {{ $full_name | quote }}
@@ -12,6 +13,7 @@
     github_name = {{ $github_name | quote }}
     github_email = {{ $github_email | quote }}
     install_op = {{ $install_op }}
+    github_askpass = {{ $github_askpass }}
 
 [hooks.read-source-state.pre]
     command = ".local/share/chezmoi/home/.install-password-manager.sh"
