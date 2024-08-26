@@ -23,3 +23,6 @@ if ! [ -f "${HOME_BIN}/op" ]; then
     EMAIL=$(grep -P '^[[:space:]]+email' ${HOME}/.config/chezmoi/chezmoi.toml | cut -d '"' -f2)
     ${HOME_BIN}/op account add --address my.1password.com --email "${EMAIL}"
 fi
+
+# TODO: What about other password managers: keepass/bitwarden/keeper/etc?
+# https://www.chezmoi.io/user-guide/password-managers/
