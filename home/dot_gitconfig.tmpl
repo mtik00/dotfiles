@@ -5,8 +5,14 @@
 [user]
 	email = {{ .email }}
 	name = {{ .name }}
+[diff]
+	tool = difftastic
 [difftool]
 	prompt = False
+[difftool "difftastic"]
+	cmd = difft "$LOCAL" "$REMOTE"
+[pager]
+	difftool = true
 [mergetool]
 	prompt = False
 [init]
@@ -25,6 +31,8 @@
 	site = !explorer.exe $(echo `git config remote.origin.url` | sed "s,git@,https://," | sed "s,.com:,.com/," | sed "s,.git\\$,," | sed "s,.git,," | sed "s,.org:,.org/,") > /dev/null 2>&1
 	undo = reset HEAD~1
 	ignore = "!gi() { curl -sL https://www.toptal.com/developers/gitignore/api/$@ ;}; gi"
+	dft = difftool
+	dlog = "-c diff.external=difft log -p --ext-diff"
 [pull]
 	rebase = true
 [credential]
