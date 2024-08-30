@@ -17,7 +17,7 @@ alias la='ls -A --color=auto'
 alias ll='ls -alFh --group-directories-first --color=auto'
 alias ls='ls -Fh --group-directories-first --color=auto'
 alias lt='ls -lth --color=auto'
-alias oplogin='~/bin/_oplogin'
+{{- if .install_op }}alias oplogin='~/bin/_oplogin'{{ end }}
 alias osinfo='neofetch  # ascii art os,kernel,bios,cpu,gpu info'
 alias pyc='find . -name "*.py[co]" -o -name __pycache__ -exec echo {} \;'
 alias randpassword='python3 ~/bin/randpassword.py'
