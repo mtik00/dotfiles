@@ -1,3 +1,4 @@
+{{- if .install_op }}
 #!/usr/bin/env bash
 
 # WARNING: THIS FILE IS MANAGED BY CHEZMOI
@@ -11,3 +12,4 @@ if [[ -n "${SESSION_VAR}" ]]; then
 else
   eval $(op signin --account my)
 fi
+{{ end }}
