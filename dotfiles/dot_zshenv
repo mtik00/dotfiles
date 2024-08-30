@@ -20,7 +20,6 @@ if [[ -d ${HOME}/.env-files.d ]]; then
 fi
 ###############################################################################
 
-export PATH=${HOME}/bin:${HOME}/.pyenv/bin:$PATH:$JAVA_HOME/bin:$MAVEN_HOME/bin
 export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
 export MAVEN_HOME=/opt/apache-maven-3.9.6
 export PYENV_ROOT="$HOME/.pyenv"
