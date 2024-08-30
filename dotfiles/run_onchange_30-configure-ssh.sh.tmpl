@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-[[ "{{ .install_op }}" != "true" ]] && exit 0
-[ ! -f "${HOME}/bin/op" ] && exit 0
-
 mkdir -p "${HOME}/.ssh"
 chmod 700 "${HOME}/.ssh"
 
-{{- if eq (env "CHEZ_CONFIG") "work-laptop" }}
+{{- if eq .config "work-laptop" }}
+[[ "{{ .install_op }}" != "true" ]] && exit 0
+[ ! -f "${HOME}/bin/op" ] && exit 0
+
 ${HOME}/bin/_oplogin
 
-keys=(id_rsa tim.mcfadden.test )
+keys=( id_rsa tim.mcfadden.test )
 for key in ${keys[@]}; do
 
     if ! [[ -f "${HOME}/.ssh/${key}.pub" ]]; then
