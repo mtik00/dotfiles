@@ -2,6 +2,8 @@
 
 # WARNING: THIS FILE IS MANAGED BY CHEZMOI
 
+alias cu='chezmoi update'
+
 alias clean-bash='env -i bash --noprofile --rcfile ~/.bashrc-clean'
 alias cpufreq='watch -n.1 "sensors|grep \"^\(Package id\|Core\) [[:digit:]]\" && cat /proc/cpuinfo | grep \"^[c]pu MHz\"  && sensors|grep fan"'
 alias df='df -lh -x squashfs'

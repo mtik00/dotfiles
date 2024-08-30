@@ -14,6 +14,12 @@ curl -Ls https://raw.githubusercontent.com/mtik00/dotfiles/main/setup.sh > /tmp/
     && bash /tmp/setup.sh
 ```
 
+NOTE: For normal updates, you can also just use this (also aliased as `cu`):
+
+```shell
+chezmoi update
+```
+
 ## Manage home files
 
 Use chezmoi to add/edit files.
