@@ -71,3 +71,10 @@ if ! command -v difft > /dev/null; then
 else
     echo "difft already installed"
 fi
+
+{{ if eq .config "work-laptop" }}
+# Install keeper commander CLI
+if ! command -v keeper; then
+    $(pyenv which python) -m pip install --upgrade keepercommander
+fi
+{{ end }}
