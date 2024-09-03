@@ -14,3 +14,8 @@ if ! [[ "${SHELL}" == *"zsh" ]]; then
     echo "Enter your user password when prompted:"
     chsh -s "${ZSH_LOC}"
 fi
+
+if ! [[ -d "${HOME}/.config/zsh/zsh-autosuggestions" ]]; then
+    mkdir -p "${HOME}/.config/zsh"
+    git clone https://github.com/zsh-users/zsh-autosuggestions "${HOME}/.config/zsh/zsh-autosuggestions"
+fi

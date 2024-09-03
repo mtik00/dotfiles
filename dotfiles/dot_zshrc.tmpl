@@ -29,6 +29,8 @@ if [[ -d ${HOME}/.config/zsh/completions ]]; then
 fi
 ###############################################################################
 
+[[ -d "${HOME}/.config/zsh/zsh-autosuggestions" ]] && source "${HOME}/.config/zsh/zsh-autosuggestions/zsh-autosuggestions.zsh"
+
 # Configure history ###########################################################
 HISTFILE=~/.zsh_history
 HISTSIZE=10000
