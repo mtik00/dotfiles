@@ -37,9 +37,10 @@ if ! command -v poetry; then
 fi
 
 # Install desk (https://github.com/jamesob/desk)
-if ! [[ -f "${HOME_BIN}/desk" ]]; then
-    curl https://raw.githubusercontent.com/jamesob/desk/master/desk > "${HOME_BIN}/desk"
-    chmod +x "${HOME_BIN}/desk"
+if ! [[ -L "${HOME_BIN}/desk" ]]; then
+    mkdir -p "${HOME}/.local/share"
+    git clone https://github.com/jamesob/desk "${HOME}/.local/share/desk"
+    ln -s ${HOME}/.local/share/desk/desk ${HOME}/bin/desk
 else
     echo "desk already installed"
 fi
