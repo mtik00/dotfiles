@@ -33,3 +33,8 @@ git push
 ```
 
 NOTE: You might want to set up GitHub authentication so you're not always prompted when you `git push`.
+
+## General Guidance
+
+- ENV vars should be exported in `.zshenv` (except `${PATH}`, which should be in `.zshrc`)
+- source code should be cloned into `~/.local/share` 
