@@ -20,6 +20,17 @@ if [[ -d ${HOME}/.env-files.d ]]; then
 fi
 ###############################################################################
 
+# Configure history ###########################################################
+export HISTFILE=~/.zsh_history
+export HISTSIZE=10000
+export SAVEHIST=10000
+###############################################################################
+
+# Configure zsh-autocomplete###################################################
+export ZSH_AUTOSUGGEST_STRATEGY=(history completion)
+export ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE="fg=8"
+###############################################################################
+
 export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
 export MAVEN_HOME=/opt/apache-maven-3.9.6
 export PYENV_ROOT="$HOME/.pyenv"
