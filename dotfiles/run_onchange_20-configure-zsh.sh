@@ -15,7 +15,11 @@ if ! [[ "${SHELL}" == *"zsh" ]]; then
     chsh -s "${ZSH_LOC}"
 fi
 
-if ! [[ -d "${HOME}/.config/zsh/zsh-autosuggestions" ]]; then
-    mkdir -p "${HOME}/.config/zsh"
-    git clone https://github.com/zsh-users/zsh-autosuggestions "${HOME}/.config/zsh/zsh-autosuggestions"
+# Install zsh-autosuggestions
+readonly auto_suggest_install_dir="${HOME}/.local/share/zsh-autosuggestions"
+if ! [[ -d "${auto_suggest_install_dir}" ]]; then
+    mkdir -p "${HOME}/.local/share"
+    git clone https://github.com/zsh-users/zsh-autosuggestions "${auto_suggest_install_dir}"
+else
+    echo "zsh-autosuggestions already installed"
 fi
