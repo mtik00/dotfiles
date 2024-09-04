@@ -19,8 +19,11 @@ export PATH="$PYENV_ROOT/bin:$PATH"
 
 if ! command -v pyenv; then
     mkdir -p "${HOME}/.local/share"
-    git clone https://github.com/pyenv/pyenv.git "${HOME}/.local/share/pyenv"
+    rm -rf "${HOME}/.local/share/pyenv"
+
+    git clone https://github.com/pyenv/pyenv.git "${PYENV_ROOT}"
     cd "${HOME}/.local/share/pyenv" && src/configure && make -C src
+    git clone https://github.com/pyenv/pyenv-update.git "${PYENV_ROOT}/plugins/pyenv-update"
 fi
 
 eval "$(pyenv init -)"
