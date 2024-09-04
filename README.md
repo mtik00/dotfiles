@@ -36,4 +36,5 @@ NOTE: You might want to set up GitHub authentication so you're not always prompt
 ## General Guidance
 
 - ENV vars should be exported in `.zshenv` (except `${PATH}`, which should be in `.zshrc`)
-- source code should be cloned into `~/.local/share` 
+- source code should be cloned into `~/.local/share`
+- environment specific configuration instructions should be stored elsewhere
