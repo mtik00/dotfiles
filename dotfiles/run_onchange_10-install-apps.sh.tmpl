@@ -14,13 +14,15 @@ if ! [[ -f ~/.gitconfig ]]; then
 fi
 
 # Install pyenv
+export PYENV_ROOT="${HOME}/.local/share/pyenv"
+export PATH="$PYENV_ROOT/bin:$PATH"
+
 if ! command -v pyenv; then
-    rm -rf ${HOME}/.pyenv
-    curl https://pyenv.run | bash
+    mkdir -p "${HOME}/.local/share"
+    git clone https://github.com/pyenv/pyenv.git "${HOME}/.local/share/pyenv"
+    cd "${HOME}/.local/share/pyenv" && src/configure && make -C src
 fi
 
-export PYENV_ROOT="$HOME/.pyenv"
-export PATH="$PYENV_ROOT/bin:$PATH"
 eval "$(pyenv init -)"
 
 if ! echo $(pyenv global) | grep $PYTHON_VERSION > /dev/null; then
