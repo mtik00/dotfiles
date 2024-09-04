@@ -1,6 +1,7 @@
 packages:
   debian:
     default:
+      - ca-certificates
       - curl
       - direnv
       - git
@@ -23,3 +24,5 @@ packages:
       - tk-dev
       - xz-utils
       - zlib1g-dev
+    docker:
+      - curl

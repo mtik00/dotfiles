@@ -6,6 +6,7 @@
 {{- $github_email := promptStringOnce . "github_email" "GitHub email" "mtik00@users.noreply.github.com" -}}
 {{- $github_name := promptStringOnce . "github_name" "GitHub full name" "Timothy McFadden" -}}
 {{- $github_username := promptStringOnce . "github_username" "GitHub username" "mtik00" -}}
+{{- $install_docker := promptBoolOnce . "install_docker" "Install Docker" -}}
 {{- $install_op := promptBoolOnce . "install_op" "Install and setup 1Password" -}}
 {{- $github_askpass := promptBoolOnce . "$github_askpass" "Set up askpass for GitHub" -}}
 
@@ -17,6 +18,7 @@
     github_name = {{ $github_name | quote }}
     github_email = {{ $github_email | quote }}
     install_op = {{ $install_op }}
+    install_docker = {{ $install_docker }}
     github_askpass = {{ $github_askpass }}
 
 [hooks.read-source-state.pre]
