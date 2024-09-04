@@ -20,6 +20,11 @@ source "{{ $.chezmoi.sourceDir }}/.installers/{{ . }}"
 source "{{ .chezmoi.sourceDir }}/.installers/docker.sh"
 {{ end }}
 
+{{- if .install_k8s }}
+# hash: {{ include ".installers/k8s.sh" | sha256sum }}
+source "{{ .chezmoi.sourceDir }}/.installers/k8s.sh"
+{{ end }}
+
 {{ if eq .config "work-laptop" }}
 # hash: {{ include ".installers/keeper.sh" | sha256sum }}
 source "{{ .chezmoi.sourceDir }}/.installers/keeper.sh"
