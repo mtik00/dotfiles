@@ -1,106 +1,26 @@
 #!/bin/bash
 set -euo pipefail
 
-readonly PYTHON_VERSION="3.11.9"
-readonly HOME_BIN="${HOME}/bin"
+# This script needs to include each installer separately to perform the sha256sum, because there's no template function
+# for listing a directory.
+#
+# Including the sha256sum of each file allows this script to "change" if _any_ of the installers change.  This means that
+# all of the installers should be idempotent.
 
-# Make sure this is here and its in the path
-mkdir -p "${HOME_BIN}"
-export PATH="${HOME_BIN}:${PATH}"
-
-# Some light git setup
-if ! [[ -f ~/.gitconfig ]]; then
-    git config --global credential.helper cache
-fi
-
-# Install pyenv
-export PYENV_ROOT="${HOME}/.local/share/pyenv"
-export PATH="$PYENV_ROOT/bin:$PATH"
-
-if ! command -v pyenv; then
-    mkdir -p "${HOME}/.local/share"
-    rm -rf "${HOME}/.local/share/pyenv"
-
-    git clone https://github.com/pyenv/pyenv.git "${PYENV_ROOT}"
-    cd "${HOME}/.local/share/pyenv" && src/configure && make -C src
-    git clone https://github.com/pyenv/pyenv-update.git "${PYENV_ROOT}/plugins/pyenv-update"
-fi
-
-eval "$(pyenv init -)"
-
-if ! echo $(pyenv global) | grep $PYTHON_VERSION > /dev/null; then
-    pyenv update
-    pyenv install --skip-existing ${PYTHON_VERSION}
-    pyenv global ${PYTHON_VERSION}
-else
-    echo "Python ${PYTHON_VERSION} already installed."
-fi
-
-# Make sure poetry is installed in global config
-if ! command -v poetry; then
-    $(pyenv which python) -m pip install --upgrade pip poetry
-fi
-
-# Install desk (https://github.com/jamesob/desk)
-if ! [[ -L "${HOME_BIN}/desk" ]]; then
-    mkdir -p "${HOME}/.local/share"
-    git clone https://github.com/jamesob/desk "${HOME}/.local/share/desk"
-    ln -s ${HOME}/.local/share/desk/desk ${HOME}/bin/desk
-else
-    echo "desk already installed"
-fi
-
-# Install starship
-if ! command -v starship > /dev/null; then
-    export FORCE=1
-    curl -sS https://starship.rs/install.sh | sh
-else
-    echo "starship already installed"
-fi
-
-# Install fzf
-if ! command -v fzf > /dev/null; then
-    readonly FZF_LATEST_URL=$(curl -s https://api.github.com/repos/junegunn/fzf/releases/latest | grep browser_download_url | grep linux_amd64 | cut -d '"' -f 4)
-    curl -L -o /tmp/fzf.tgz "${FZF_LATEST_URL}"
-    tar xzf /tmp/fzf.tgz -C "$HOME/bin"
-    rm /tmp/fzf.tgz
-else
-    echo "fzf already installed"
-fi
-
-# Install difftastic
-if ! command -v difft > /dev/null; then
-    readonly DIFFT_LATEST_URL=$(curl -s https://api.github.com/repos/Wilfred/difftastic/releases/latest | grep browser_download_url | grep x86_64-unknown-linux | cut -d '"' -f 4)
-    curl -L -o /tmp/difft.tgz "${DIFFT_LATEST_URL}"
-    tar xzf /tmp/difft.tgz -C "$HOME/bin"
-    rm /tmp/difft.tgz
-else
-    echo "difft already installed"
-fi
+{{- $files := list "00-setup.sh" "pyenv.sh" "poetry.sh" "desk.sh" "starship.sh" "fzf.sh" "difftastic.sh" -}}
+{{- range $files -}}
+{{- $parts := list ".installers" . -}}
+{{- $file := join "/" $parts -}}
+# hash: {{ $file | include | sha256sum }}
+source "{{ $.chezmoi.sourceDir }}/.installers/{{ . }}"
+{{ end }}
 
 {{- if .install_docker }}
-# Install Docker
-# https://docs.docker.com/engine/install/ubuntu/
-if ! command -v docker | grep /usr/bin >/dev/null; then
-    sudo install -m 0755 -d /etc/apt/keyrings
-    sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
-    sudo chmod a+r /etc/apt/keyrings/docker.asc
-
-    echo \
-      "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
-      $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
-      sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-    sudo apt-get update
-    sudo apt-get install --yes docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-
-    sudo groupadd -f docker
-    sudo usermod -aG docker ${USER}
-fi
+# hash: {{ include ".installers/docker.sh" | sha256sum }}
+source "{{ .chezmoi.sourceDir }}/.installers/docker.sh"
 {{ end }}
 
 {{ if eq .config "work-laptop" }}
-# Install keeper commander CLI
-if ! command -v keeper; then
-    $(pyenv which python) -m pip install --upgrade keepercommander
-fi
+# hash: {{ include ".installers/keeper.sh" | sha256sum }}
+source "{{ .chezmoi.sourceDir }}/.installers/keeper.sh"
 {{ end }}
