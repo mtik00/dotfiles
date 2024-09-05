@@ -2,9 +2,9 @@
 
 # WARNING: THIS FILE IS MANAGED BY CHEZMOI
 
+{{ if eq .config "work-laptop" }}
 function load-keychain() {
-    keys=( id_rsa tim.mcfadden.test )
-    for key in "${keys[@]}"; do
+    for key in "${KEYCHAIN_KEYNAMES[@]}"; do
         echo "adding key: ${key}"
         /usr/bin/keychain -q --nogui $HOME/.ssh/${key}
         source $HOME/.keychain/$(hostname)-sh
@@ -12,6 +12,7 @@ function load-keychain() {
 
     /usr/bin/keychain -l
 }
+{{ end }}
 
 function add-to-keychain() {
     key=$1

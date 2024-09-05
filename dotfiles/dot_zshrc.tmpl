@@ -15,7 +15,9 @@ fpath+=~/.zfunc
 
 {{ if .install_op }}
 ${HOME}/bin/_oplogin
+{{- end }}
 
+{{- if eq .config "work-laptop" }}
 load-keychain
 {{- end }}
 
