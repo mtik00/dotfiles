@@ -2,7 +2,6 @@
 
 # WARNING: THIS FILE IS MANAGED BY CHEZMOI
 
-{{ if eq .config "work-laptop" }}
 function load-keychain() {
     for key in "${KEYCHAIN_KEYNAMES[@]}"; do
         echo "adding key: ${key}"
@@ -12,7 +11,6 @@ function load-keychain() {
 
     /usr/bin/keychain -l
 }
-{{ end }}
 
 function add-to-keychain() {
     key=$1

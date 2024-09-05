@@ -17,9 +17,8 @@ fpath+=~/.zfunc
 ${HOME}/bin/_oplogin
 {{- end }}
 
-{{- if eq .config "work-laptop" }}
-load-keychain
-{{- end }}
+# export KEYCHAIN_KEYNAMES if you need to.  ~/.env-files.d/keychain is a good place.
+[[ $KEYCHAIN_KEYNAMES ]] && load-keychain
 
 # Source all completions ######################################################
 if [[ -d ${HOME}/.config/zsh/completions ]]; then
