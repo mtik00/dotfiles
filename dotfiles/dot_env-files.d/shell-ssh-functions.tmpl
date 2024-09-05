@@ -3,7 +3,7 @@
 # WARNING: THIS FILE IS MANAGED BY CHEZMOI
 
 function load-keychain() {
-    for key in "${KEYCHAIN_KEYNAMES[@]}"; do
+    for key in "$@"; do
         echo "adding key: ${key}"
         /usr/bin/keychain -q --nogui $HOME/.ssh/${key}
         source $HOME/.keychain/$(hostname)-sh

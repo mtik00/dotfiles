@@ -18,7 +18,7 @@ ${HOME}/bin/_oplogin
 {{- end }}
 
 # export KEYCHAIN_KEYNAMES if you need to.  ~/.env-files.d/keychain is a good place.
-[[ $KEYCHAIN_KEYNAMES ]] && load-keychain
+[[ $KEYCHAIN_KEYNAMES ]] && load-keychain $KEYCHAIN_KEYNAMES
 
 # Source all completions ######################################################
 if [[ -d ${HOME}/.config/zsh/completions ]]; then
