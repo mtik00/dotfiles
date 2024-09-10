@@ -21,6 +21,9 @@
     install_op = false
     github_askpass = false
 
-[hooks.read-source-state.pre]
-    command = ".local/share/chezmoi/dotfiles/.install-password-manager.sh"
-
+[scriptEnv]
+{{- if eq $config "work-laptop"}}
+    PYTHON_VERSION = "3.11.9"
+{{- else }}
+    PYTHON_VERSION = "3.12.6"
+{{- end }}

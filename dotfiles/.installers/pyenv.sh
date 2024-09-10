@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-PYTHON_VERSION=${PYTHON_VERSION:-3.11.9}
+PYTHON_VERSION=${PYTHON_VERSION:-"3.11.9"}
 PYENV_ROOT="${HOME}/.local/share/pyenv"
 PATH="$PYENV_ROOT/bin:$PATH"
 
