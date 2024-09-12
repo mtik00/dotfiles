@@ -5,6 +5,7 @@ packages:
       - curl
       - direnv
       - git
+      - gitk
       - jq
       - keychain
       - ripgrep
