@@ -4,6 +4,7 @@ packages:
       - ca-certificates
       - curl
       - direnv
+      - dnsutils
       - git
       - gitk
       - jq
