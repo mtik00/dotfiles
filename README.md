@@ -38,3 +38,19 @@ NOTE: You might want to set up GitHub authentication so you're not always prompt
 - ENV vars should be exported in `.zshenv` (except `${PATH}`, which should be in `.zshrc`)
 - source code should be cloned into `~/.local/share`
 - environment specific configuration instructions should be stored elsewhere
+
+## zellij completions
+
+The output from `zellij` isn't compatible with sourcing the output.
+
+1. Remove the function calls at the end (_zellij "$@" and below)
+2. Add `compdef _zellij zellij` to the top of the file.
+
+Run this to update completions:
+
+```shell
+zellij setup --generate-completion zsh \
+    | sed '/_zellij "/,$d' \
+    | sed 's/autoload -U is-at-least/compdef _zellij zellij\n\nautoload -U is-at-least/' \
+    > dotfiles/dot_config/zsh/completions/zellij.zsh
+```
