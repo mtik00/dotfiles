@@ -50,7 +50,7 @@ Run this to update completions:
 
 ```shell
 zellij setup --generate-completion zsh \
-    | sed '/_zellij "/,$d' \
-    | sed 's/autoload -U is-at-least/compdef _zellij zellij\n\nautoload -U is-at-least/' \
+    | sed -e '/_zellij "/,$d' \
+      -e 's/autoload -U is-at-least/compdef _zellij zellij\n\nautoload -U is-at-least/' \
     > dotfiles/dot_config/zsh/completions/zellij.zsh
 ```
