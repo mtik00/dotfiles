@@ -20,6 +20,7 @@
     install_k8s = {{ $install_k8s }}
     install_op = false
     github_askpass = false
+    wsl = {{ contains "WSL" .chezmoi.kernel.osrelease }}
 
 [scriptEnv]
 {{- if eq $config "work-laptop"}}
