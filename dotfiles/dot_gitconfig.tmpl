@@ -37,3 +37,7 @@
 	rebase = true
 [credential]
 	helper = cache
+{{- if eq .config "work-laptop"}}
+[includeIf "gitdir:~/code/personal/"]
+	path = ~/code/personal/.gitconfig
+{{ end }}

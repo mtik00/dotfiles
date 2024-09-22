@@ -1,0 +1,12 @@
+{{- if eq .config "work-laptop" }}
+#!/usr/bin/env bash
+set -euo pipefail
+
+mkdir -p "{{ .personal_code_dir }}"
+
+cat <<END > "{{ .personal_code_dir }}/.gitconfig"
+[user]
+	email = {{ .github_email }}
+	name = {{ .github_name }}
+END
+{{ end }}

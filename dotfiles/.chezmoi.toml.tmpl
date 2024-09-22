@@ -21,6 +21,7 @@
     install_op = false
     github_askpass = false
     wsl = {{ contains "WSL" .chezmoi.kernel.osrelease }}
+    personal_code_dir = {{ if eq .config "work-laptop" }}"~/code/personal"{{ else }}"~/code"{{ end }}
 
 [scriptEnv]
 {{- if eq $config "work-laptop"}}
