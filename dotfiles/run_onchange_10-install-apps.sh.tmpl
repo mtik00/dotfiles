@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -euo pipefail
 
 # This script needs to include each installer separately to perform the sha256sum, because there's no template function
@@ -7,7 +7,7 @@ set -euo pipefail
 # Including the sha256sum of each file allows this script to "change" if _any_ of the installers change.  This means that
 # all of the installers should be idempotent.
 
-{{- $files := list "00-setup.sh" "pyenv.sh" "poetry.sh" "desk.sh" "starship.sh" "fzf.sh" "difftastic.sh" "zellij.sh" -}}
+{{ $files := list "00-setup.sh" "pyenv.sh" "poetry.sh" "desk.sh" "starship.sh" "fzf.sh" "difftastic.sh" "zellij.sh" -}}
 {{- range $files -}}
 {{- $parts := list ".installers" . -}}
 {{- $file := join "/" $parts -}}
