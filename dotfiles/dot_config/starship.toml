@@ -26,7 +26,7 @@ behind = '⇣${count}'
 disabled = true
 
 [env_var.CTX]
-format = ' 🈸:[$env_value](fg:green) '
+format = ' 🈸:[$env_value](fg:green)'
 
 [env_var.DESK_NAME]
-format = ' 📝:[$env_value](fg:green) '
+format = '📝:[$env_value](fg:green)'
