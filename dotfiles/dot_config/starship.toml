@@ -22,15 +22,11 @@ ahead = '⇡${count}'
 diverged = '⇕⇡${ahead_count}⇣${behind_count}'
 behind = '⇣${count}'
 
-[custom.desk]
-when = ''' test "$DESK_NAME" '''
-command = 'printf "${DESK_NAME}"'
-format = ' 📝:[$output]($style) '
-
-[custom.ctx]
-when = ''' test "$CTX" '''
-command = 'printf "${CTX}"'
-format = ':[$output]($style) '
-
 [java]
 disabled = true
+
+[env_var.CTX]
+format = ' 🈸:[$env_value](fg:green) '
+
+[env_var.DESK_NAME]
+format = ' 📝:[$env_value](fg:green) '
