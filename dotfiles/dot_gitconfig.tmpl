@@ -28,7 +28,7 @@
 	l = log -1
 	h = !git log --graph --pretty=format:'%C(bold)%h%Creset%C(magenta)%d%Creset %s %C(yellow)<%an> %C(cyan)(%cr)%Creset' --abbrev-commit --date=relative --color=always|head -n1
 	aliases = config --get-regexp '^alias\\.'
-	site = !explorer.exe $(echo `git config remote.origin.url` | sed "s,git@,https://," | sed "s,.com:,.com/," | sed "s,.git\\$,," | sed "s,.git,," | sed "s,.org:,.org/,") > /dev/null 2>&1
+	site = !explorer.exe $(echo `git config remote.origin.url` | sed 's,ssh://git@gitlab.bluestaq.com:2222,https://gitlab.bluestaq.com,' | sed 's,.git$,,') > /dev/null 2>&1
 	undo = reset HEAD~1
 	ignore = "!gi() { curl -sL https://www.toptal.com/developers/gitignore/api/$@ ;}; gi"
 	dft = difftool
