@@ -49,6 +49,15 @@ layout {
             plugin location="zellij:status-bar"
         }
     }
+    tab name="dso-docs" {
+        pane size=1 borderless=true {
+            plugin location="zellij:compact-bar"
+        }
+        pane cwd="~/code/dso/dso-docs" name="dso-docs"
+        pane size=2 borderless=true {
+            plugin location="zellij:status-bar"
+        }
+    }
 }
 {{- else }}
 layout {
