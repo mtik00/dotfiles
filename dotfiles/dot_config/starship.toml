@@ -3,6 +3,9 @@ command_timeout = 1000
 [package]
 disabled = true
 
+[aws]
+disabled = true
+
 [python]
 format = '[${symbol}(${version})]($style)'
 
