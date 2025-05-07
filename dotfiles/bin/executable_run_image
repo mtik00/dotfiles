@@ -115,7 +115,7 @@ function validate_args() {
         usage
         exit 1
     else
-        log.info "OK"
+        log.debug "OK"
     fi
 }
 
