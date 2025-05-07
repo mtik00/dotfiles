@@ -130,7 +130,7 @@ function main() {
         cmd+=("-v" "$(pwd):$WORKING_DIR" "-w" $WORKING_DIR)
     fi
 
-    if [ -n "${IMAGE_CMD[@]}" ]; then
+    if [[ ${#IMAGE_CMD[@]} -gt 0 ]]; then
         cmd+=($IMAGE ${IMAGE_CMD[@]})
     else
         cmd+=("--entrypoint" $SHELL $IMAGE)
