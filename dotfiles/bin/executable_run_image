@@ -1,0 +1,151 @@
+#!/usr/bin/env bash
+# WARNING: This file is managed by chezmoi.
+
+set -euo pipefail
+
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+source "${SCRIPT_DIR}/lib/logger.sh"
+
+IMAGE=""
+IMAGE_CMD=()
+MOUNT=0
+DRY_RUN=0
+WORKING_DIR="/usr/src/app"
+SHELL="sh"
+APP="podman"
+
+USAGE=$(cat <<EOF
+Usage:
+    $(basename "$0") <args> IMAGE [CMD]
+
+    This script is a convenience wrapper for running an image using podman.
+
+    CMD is optional.  If empty, "--entrypoint <SHELL>" will be used instead.
+
+    Arguments:
+        -a|--app [APP]         : The application to run the image (default is $APP)
+        -d|--debug             : flag; enable debug logging
+        --dry-run              : flag; Only show the command that would be ran
+        -m|--mount             : flag; whether to mount the local directory to $WORKING_DIR
+        -s|--shell [SHELL]     : The shell to execute if CMD is empty (default is $SHELL)
+        -w|--working-dir [DIR] : The working dir to use when mounting (default is $WORKING_DIR)
+        -h|--help              : Show this message
+EOF
+)
+
+function usage() {
+    printf "%s\n" "${USAGE}"
+    exit 99
+}
+
+
+function argparse() {
+    while [[ $# -gt 0 ]]; do
+    case $1 in
+        -a|--app)
+            APP="$2"
+            shift 2
+            ;;
+        -d|--debug)
+            LEVEL=$DEBUG
+            shift
+            ;;
+        --dry-run)
+            DRY_RUN=1
+            shift
+            ;;
+        -m|--mount)
+            MOUNT=1
+            shift
+            ;;
+        -s|--shell)
+            SHELL="$2"
+            shift 2
+            ;;
+        -w|--working-dir)
+            WORKING_DIR="$2"
+            shift 2
+            ;;
+        -h|--help)
+            usage
+            ;;
+        --)
+            # Explicit separator between our options and iamge command
+            shift
+            break
+            ;;
+        *)
+            IMAGE="$1"
+            shift
+            break
+            ;;
+    esac
+    done
+
+    if [[ $# -gt 0 ]]; then
+      IMAGE_CMD+=("$@")
+    fi
+}
+
+
+function validate_args() {
+    local error=0
+    log.debug "APP:'${APP}'"
+    log.debug "MOUNT:'${MOUNT}'"
+    log.debug "SHELL:'${SHELL}'"
+    log.debug "IMAGE:'${IMAGE}'"
+    log.debug "IMAGE_CMD:'${IMAGE_CMD[@]}'"
+
+    if ! [[ "${APP}" == "podman" || "${APP}" == "docker" ]]; then
+        log.error "$APP not a valid app; must be either podman or docker"
+        error=1
+    fi
+
+    if [[ -z "${IMAGE}" ]]; then
+        log.error "IMAGE must be defined"
+        error=1
+    fi
+
+    if [[ -z "${SHELL}" ]]; then
+        log.error "SHELL must be defined"
+        error=1
+    fi
+
+    if [[ $error -gt 0 ]]; then
+        usage
+        exit 1
+    else
+        log.info "OK"
+    fi
+}
+
+
+function main() {
+    argparse "$@"
+    validate_args
+
+    cmd=($APP run --rm -it)
+
+    if [ $MOUNT -eq 1 ]; then
+        cmd+=("-v" "$(pwd):$WORKING_DIR" "-w" $WORKING_DIR)
+    fi
+
+    if [ -n "${IMAGE_CMD[@]}" ]; then
+        cmd+=($IMAGE ${IMAGE_CMD[@]})
+    else
+        cmd+=("--entrypoint" $SHELL $IMAGE)
+    fi
+
+    printf "%q " "${cmd[@]}"
+
+    if [[ $DRY_RUN -eq 0 ]]; then
+        printf "\n\n"
+
+        "${cmd[@]}"
+    else
+        echo
+    fi
+}
+
+
+main "$@"

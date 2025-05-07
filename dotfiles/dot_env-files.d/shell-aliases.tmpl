@@ -31,12 +31,16 @@ alias vim-secrets='source ~/bin/_vim_secrets'
 # By default, only the last 16 lines are shown.  This changes to show _all_ history.
 alias history="fc -l 1"
 
-# Docker stuff #########################################################################################################
+# Docker/Podman stuff ##################################################################################################
 alias d='docker'
+alias pr='run_image -a podman -m'
+alias prb='run_image -a podman -m -s bash'
+alias prs='run_image -a podman -m -s sh'
+
 # complete -F _docker d
 alias dbx='docker buildx build --output type=docker'
-alias drb='docker run --rm -it --entrypoint bash'
-alias drs='docker run --rm -it --entrypoint sh'
+alias drb='run_image -a docker -s bash'
+alias drs='run_image -a docker -s sh'
 alias docker-prune-old-images=_docker_prune_old_images
 ########################################################################################################################
 
