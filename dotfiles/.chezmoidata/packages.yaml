@@ -10,6 +10,8 @@ packages:
       - htop
       - jq
       - keychain
+      - pass
+      - pass-otp
       - ripgrep
       - unzip
       - yq
