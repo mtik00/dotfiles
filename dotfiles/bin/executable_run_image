@@ -70,7 +70,7 @@ function argparse() {
             usage
             ;;
         --)
-            # Explicit separator between our options and iamge command
+            # Explicit separator between our options and image command
             shift
             break
             ;;
