@@ -38,7 +38,7 @@ import re
 import rich
 import rich.prompt
 from rich import print
-from subprocess import check_output, STDOUT, run
+from subprocess import check_output, STDOUT, run, CalledProcessError
 
 
 RE_COMMIT_TYPE = re.compile(
@@ -67,18 +67,41 @@ def parse_args(args: list[str] = sys.argv[1:]) -> argparse.Namespace:
 class Git:
     @staticmethod
     def current_branch() -> str:
-        branch = check_output(["git", "branch", "--show-current"])
+        command = ["git", "branch", "--show-current"]
+
+        try:
+            branch = check_output(command)
+        except CalledProcessError as e:
+            print(f"[red]{' '.join(command)}[/]")
+            print(f"[red]Command failed: {e.output.decode('utf-8')}[/]")
+            sys.exit(1)
+
         return branch.decode("utf-8").strip()
 
     @staticmethod
     def current_tag() -> semver.version.Version:
-        tag = check_output(["git", "describe", "--tags", "--abbrev=0"], stderr=STDOUT)
+        command = ["git", "describe", "--tags", "--abbrev=0"]
+        try:
+            tag = check_output(command, stderr=STDOUT)
+        except CalledProcessError as e:
+            print(f"[red]{' '.join(command)}[/]")
+            print(f"[red]Command failed: {e.output.decode('utf-8')}[/]")
+            sys.exit(1)
+
         return semver.Version.parse(tag.decode("utf-8"))
 
     @staticmethod
     def commits_since_tag(tag: str) -> list[str]:
         items: list[str] = []
-        commits = check_output(["git", "log", "--pretty=format:%s", f"{tag}..HEAD"])
+        command = ["git", "log", "--pretty=format:%s", f"{tag}..HEAD"]
+
+        try:
+            commits = check_output(command)
+        except CalledProcessError as e:
+            print(f"[red]{' '.join(command)}[/]")
+            print(f"[red]Command failed: {e.output.decode('utf-8')}[/]")
+            sys.exit(1)
+
         if commits:
             items = commits.decode("utf-8").splitlines()
 
@@ -104,11 +127,23 @@ class Git:
             message = f"v{tag}"
 
         command = ["git", "tag", "-a", tag, "-m", message]
-        run(command)
+        try:
+            run(command)
+        except CalledProcessError as e:
+            print(f"[red]{' '.join(command)}[/]")
+            print(f"[red]Command failed: {e.output.decode('utf-8')}[/]")
+            sys.exit(1)
 
     @staticmethod
     def push_with_tags():
-        run(["git", "push", "--follow-tags"])
+        command = ["git", "push", "--follow-tags"]
+
+        try:
+            run(command)
+        except CalledProcessError as e:
+            print(f"[red]{' '.join(command)}[/]")
+            print(f"[red]Command failed: {e.output.decode('utf-8')}[/]")
+            sys.exit(1)
 
 
 def suggest_version(
