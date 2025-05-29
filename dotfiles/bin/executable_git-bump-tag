@@ -1,0 +1,248 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.13"
+# dependencies = [
+#     "semver",
+#     "rich",
+# ]
+# ///
+# WARNING: THIS FILE IS MANAGED BY CHEZMOI
+"""
+This is a "light weight" script used to suggest a new git tag based on commit
+messages.  A better alternative is the Python package "commitizen".  That is
+recommended for a more rigorous conventional-commit process.
+
+REQUIREMENTS
+
+ - Commit/merge messages match conventional commits (scope is optional); e.g. `feat(ABC-123): new feature X`
+ - All breaking changes MUST have `!` near the commit type
+    - `feat(ABC-123)!: new feature X (breaking change)`
+    - `feat!(ABC-123): new feature X (breaking change)`
+
+DEPENDENCIES
+
+This script is designed to be run with `uv`.  If you do not want to use `uv`, you
+must install the dependencies.  For example:
+
+    python -m pip install --upgrade semver rich
+
+If you have `uv` you can run this script 2 ways:
+  1. `uv run gta`
+  2. Make this script executable (`chmod +x gta`) and run it directly
+"""
+
+import argparse
+import sys
+import semver
+import re
+import rich
+import rich.prompt
+from rich import print
+from subprocess import check_output, STDOUT, run
+
+
+RE_COMMIT_TYPE = re.compile(
+    r"""
+    ^
+    (build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test){1}
+    (!?)            # Breaking change before scope
+    (?:\(.+\))?     # Optional scope / Jira ticket
+    (!?)            # Breaking change after scope
+    """,
+    flags=re.IGNORECASE | re.VERBOSE,
+)
+
+
+def parse_args(args: list[str] = sys.argv[1:]) -> argparse.Namespace:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "-t",
+        "--test",
+        help="Run some tests",
+        action="store_true",
+    )
+    return parser.parse_args(args)
+
+
+class Git:
+    @staticmethod
+    def current_branch() -> str:
+        branch = check_output(["git", "branch", "--show-current"])
+        return branch.decode("utf-8").strip()
+
+    @staticmethod
+    def current_tag() -> semver.version.Version:
+        tag = check_output(["git", "describe", "--tags", "--abbrev=0"], stderr=STDOUT)
+        return semver.Version.parse(tag.decode("utf-8"))
+
+    @staticmethod
+    def commits_since_tag(tag: str) -> list[str]:
+        items: list[str] = []
+        commits = check_output(["git", "log", "--pretty=format:%s", f"{tag}..HEAD"])
+        if commits:
+            items = commits.decode("utf-8").splitlines()
+
+        return items
+
+    @staticmethod
+    def extract_types_from_commits(commits: list[str]) -> set[str]:
+        result: set[str] = set()
+        for commit in commits:
+            if match := RE_COMMIT_TYPE.match(commit):
+                # Grab the type and the ! if it exists (might be in group 2 or group 3)
+                commit_type = "".join(match.groups())
+                result.add(commit_type)
+
+        if not result:
+            print("[yellow]Could not find any conventional commits![/]")
+
+        return result
+
+    @staticmethod
+    def create_annotated_tag(tag: str, message: str | None = None):
+        if not message:
+            message = f"v{tag}"
+
+        command = ["git", "tag", "-a", tag, "-m", message]
+        run(command)
+
+    @staticmethod
+    def push_with_tags():
+        run(["git", "push", "--follow-tags"])
+
+
+def suggest_version(
+    latest: semver.version.Version,
+    commits: list[str],
+) -> semver.version.Version:
+    """Suggest a new version based on semantic commit messages."""
+    types: set[str] = Git.extract_types_from_commits(commits)
+    if not types:
+        return latest
+
+    if "!" in "".join(types):
+        print("[yellow]breaking change found; bump major version[/yellow]")
+        return latest.bump_major()
+    elif "feat" in types:
+        print("features found; bump minor version")
+        return latest.bump_minor()
+    elif "fix" in types:
+        print("only fixes found; bump patch version")
+        return latest.bump_patch()
+
+    print(f"[yellow]WARNING: Could not determine new version for types: {types}[/]")
+    return latest
+
+
+def test():
+    """Built-in test to ensure changes to regex/parser work correctly."""
+    errors = 0
+
+    test_strings = [
+        "feat(asdf-123): some stuff",
+        "feat!(asdf-123): some breaking stuff",
+        "feat(asdf-123)!: more breaking stuff",
+    ]
+
+    for test_string in test_strings:
+        match = RE_COMMIT_TYPE.match(test_string)
+        if not match:
+            print(f"[red]ERROR: Could not match >>>{test_string}<<<[/]")
+            errors += 1
+
+    test_strings = [
+        "feat(asdf-123): some stuff",
+        "feat!(asdf-123): some breaking stuff",
+        "feat(asdf-123)!: more breaking stuff",
+        "updates",
+        "fix some stuff",
+    ]
+
+    commit_types = Git.extract_types_from_commits(test_strings)
+    expected_types: set[str] = {"fix", "feat", "feat!"}
+
+    if commit_types != expected_types:
+        print(f"[red]ERROR: Commit types do not match: {commit_types}[/]")
+        print(f"[red]...expected {expected_types}[/]")
+        errors += 1
+
+    latest = semver.Version.parse("1.2.3")
+    test_strings = [
+        "feat(asdf-123): some stuff",
+        "feat!(asdf-123): some breaking stuff",
+        "feat(asdf-123)!: more breaking stuff",
+    ]
+    suggested_version = suggest_version(latest, test_strings)
+    if suggested_version != "2.0.0":
+        print("[red]Failed to bump major version")
+        errors += 1
+
+    test_strings = [
+        "feat(asdf-123): some stuff",
+        "feat(asdf-123): more stuff",
+        "feat(asdf-123): even more stuff",
+    ]
+    suggested_version = suggest_version(latest, test_strings)
+    if suggested_version != "1.3.0":
+        print("[red]Failed to bump minor version")
+        errors += 1
+
+    test_strings = [
+        "fix(asdf-123): some stuff",
+        "fix: more stuff",
+        "fix even more stuff",
+    ]
+    suggested_version = suggest_version(latest, test_strings)
+    if suggested_version != "1.2.4":
+        print("[red]Failed to bump patch version")
+        errors += 1
+
+    if not errors:
+        print("[green]All test cases passed[/]")
+
+
+def main():
+    branch = Git.current_branch()
+    if branch not in ["main", "master"]:
+        print("[red]You are not on main or master branch![/]")
+        print("[red]You should not continue![/]")
+        answer = rich.prompt.Confirm.ask(
+            "[yellow]Are you sure you want to proceed?[/]",
+            default=False,
+        )
+        if not answer:
+            return
+
+    latest_version = Git.current_tag()
+    print("Latest tag:", latest_version)
+
+    commits = Git.commits_since_tag(latest_version)
+    if commits:
+        print("Commits since latest tag:")
+        for commit in commits:
+            print("   ", commit)
+    else:
+        print(f"[yellow]No commits since {latest_version}; nothing to do.")
+        return
+
+    print()
+
+    new_version = suggest_version(latest_version, commits)
+
+    if new_version != latest_version:
+        print("Suggested new version:", new_version)
+        answer = rich.prompt.Confirm.ask("Ok to tag?", default=False)
+        if answer:
+            Git.create_annotated_tag(str(new_version))
+
+        answer = rich.prompt.Confirm.ask("Ok to push?", default=False)
+        if answer:
+            Git.push_with_tags()
+
+
+if __name__ == "__main__":
+    args = parse_args()
+    if args.test:
+        test()
+    else:
+        main()
