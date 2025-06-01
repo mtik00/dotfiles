@@ -12,6 +12,7 @@ packages:
       - keychain
       - pass
       - pass-otp
+      - podman
       - ripgrep
       - unzip
       - yq
