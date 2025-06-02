@@ -39,6 +39,7 @@ import rich
 import rich.prompt
 from rich import print
 from subprocess import check_output, STDOUT, run, CalledProcessError
+from typing import Callable
 
 
 RE_COMMIT_TYPE = re.compile(
@@ -91,7 +92,7 @@ class Git:
         return semver.Version.parse(tag.decode("utf-8"))
 
     @staticmethod
-    def commits_since_tag(tag: str) -> list[str]:
+    def commits_since_tag(tag: str, filter: Callable = lambda x: True) -> list[str]:
         items: list[str] = []
         command = ["git", "log", "--pretty=format:%s", f"{tag}..HEAD"]
 
@@ -104,6 +105,8 @@ class Git:
 
         if commits:
             items = commits.decode("utf-8").splitlines()
+
+        items = [x for x in items if filter(x)]
 
         return items
 
@@ -251,7 +254,10 @@ def main():
     latest_version = Git.current_tag()
     print("Latest tag:", latest_version)
 
-    commits = Git.commits_since_tag(latest_version)
+    commits = Git.commits_since_tag(
+        latest_version,
+        filter=lambda x: RE_COMMIT_TYPE.match(x),
+    )
     if commits:
         print("Commits since latest tag:")
         for commit in commits:
@@ -267,10 +273,8 @@ def main():
     if new_version != latest_version:
         print("Suggested new version:", new_version)
         answer = rich.prompt.Confirm.ask("Ok to tag?", default=False)
-        if not answer:
-            return
-
-        Git.create_annotated_tag(str(new_version))
+        if answer:
+            Git.create_annotated_tag(str(new_version))
 
         answer = rich.prompt.Confirm.ask("Ok to push?", default=False)
         if answer:
