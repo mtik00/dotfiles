@@ -267,8 +267,10 @@ def main():
     if new_version != latest_version:
         print("Suggested new version:", new_version)
         answer = rich.prompt.Confirm.ask("Ok to tag?", default=False)
-        if answer:
-            Git.create_annotated_tag(str(new_version))
+        if not answer:
+            return
+
+        Git.create_annotated_tag(str(new_version))
 
         answer = rich.prompt.Confirm.ask("Ok to push?", default=False)
         if answer:
