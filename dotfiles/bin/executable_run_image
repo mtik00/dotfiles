@@ -13,6 +13,8 @@ DRY_RUN=0
 WORKING_DIR="/usr/src/app"
 SHELL="sh"
 APP="podman"
+ENV_VARS=()
+ENV_FILENAME=""
 
 USAGE=$(cat <<EOF
 Usage:
@@ -26,6 +28,8 @@ Usage:
         -a|--app [APP]         : The application to run the image (default is $APP)
         -d|--debug             : flag; enable debug logging
         --dry-run              : flag; Only show the command that would be ran
+        -e [VARNAME]           : send env var to container; can define multiple times
+        --env-file [FILENAME]  : send "--env-file" to the podman command
         -m|--mount             : flag; whether to mount the local directory to $WORKING_DIR
         -s|--shell [SHELL]     : The shell to execute if CMD is empty (default is $SHELL)
         -w|--working-dir [DIR] : The working dir to use when mounting (default is $WORKING_DIR)
@@ -53,6 +57,14 @@ function argparse() {
         --dry-run)
             DRY_RUN=1
             shift
+            ;;
+        --env-file)
+            ENV_FILENAME="$2"
+            shift 2
+            ;;
+        -e)
+            ENV_VARS+=("$2")
+            shift 2
             ;;
         -m|--mount)
             MOUNT=1
@@ -94,6 +106,8 @@ function validate_args() {
     log.debug "MOUNT:'${MOUNT}'"
     log.debug "SHELL:'${SHELL}'"
     log.debug "IMAGE:'${IMAGE}'"
+    log.debug "ENV_FILENAME:'${ENV_FILENAME}'"
+    log.debug "ENV_VARS:'${ENV_VARS[@]}'"
     log.debug "IMAGE_CMD:'${IMAGE_CMD[@]}'"
 
     if ! [[ "${APP}" == "podman" || "${APP}" == "docker" ]]; then
@@ -130,11 +144,20 @@ function main() {
         cmd+=("-v" "$(pwd):$WORKING_DIR" "-w" $WORKING_DIR)
     fi
 
+    for E in ${ENV_VARS[@]}; do
+        cmd+=("-e" "${E}")
+    done
+
+    if [[ -n "${ENV_FILENAME}" ]]; then
+        cmd+=("--env-file" "${ENV_FILENAME}")
+    fi
+
     if [[ ${#IMAGE_CMD[@]} -gt 0 ]]; then
         cmd+=($IMAGE ${IMAGE_CMD[@]})
     else
         cmd+=("--entrypoint" $SHELL $IMAGE)
     fi
+
 
     printf "%q " "${cmd[@]}"
 
