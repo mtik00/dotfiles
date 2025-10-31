@@ -26,9 +26,6 @@ source "{{ .chezmoi.sourceDir }}/.installers/k8s.sh"
 {{ end }}
 
 {{ if eq .config "work-laptop" }}
-# hash: {{ include ".installers/keeper.sh" | sha256sum }}
-source "{{ .chezmoi.sourceDir }}/.installers/keeper.sh"
-
 # hash: {{ include ".installers/aws-cli.sh" | sha256sum }}
 source "{{ .chezmoi.sourceDir }}/.installers/aws-cli.sh"
 {{ end }}
