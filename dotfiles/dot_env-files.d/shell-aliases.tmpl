@@ -54,8 +54,3 @@ alias describecert=_seecert
 # backups
 alias bak=_bak
 alias baks=_baks
-
-# Python stuff
-# pyenv with poetry envs are painful when you want to use poetry's envs
-alias poetry-shell='source "$( poetry env list --full-path | grep Activated | cut -d'"'"' '"'"' -f1 )/bin/activate"'
-alias poetry-shell-deactivate=_poetry_deactive_shell

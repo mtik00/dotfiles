@@ -5,7 +5,6 @@ set -euo pipefail
 
 sudo apt-get update
 sudo apt-get install --upgrade --yes {{ range .packages.debian.default -}}{{ . }} {{ end }}
-sudo apt-get install --upgrade --yes {{ range .packages.debian.pyenv -}}{{ . }} {{ end}}
 {{- if .install_docker }}
 sudo apt-get install --upgrade --yes {{ range .packages.debian.docker -}}{{ . }} {{ end}}
 {{ end }}
