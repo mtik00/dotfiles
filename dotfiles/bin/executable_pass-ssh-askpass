@@ -1,0 +1,22 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+import sys
+from pathlib import Path
+from subprocess import getoutput
+
+def main():
+    args = "\n".join([str(x) for x in sys.argv])
+
+    if "id_rsa" in args:
+        password = getoutput("pass ssh/id_rsa")
+    elif "tim.mcfadden.test" in args:
+        password = getoutput("pass ssh/tim.mcfadden.test")
+    else:
+        sys.exit(99)
+
+    print(password)
+
+
+if __name__ == "__main__":
+    main()

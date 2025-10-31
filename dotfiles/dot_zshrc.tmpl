@@ -19,6 +19,9 @@ bindkey "^X^E" edit-command-line
 
 fpath+=~/.zfunc
 
+pass show dummy 2>/dev/null || true
+export SSH_ASKPASS=/home/timcfadd/bin/pass-ssh-askpass
+
 {{ if .install_op }}
 ${HOME}/bin/_oplogin
 {{- end }}
