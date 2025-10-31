@@ -3,6 +3,9 @@
 
 result=1
 
+# remove all buildah images
+buildah rm --all
+
 # Keep trying to remove dangling images and exited processes until nothing
 # is removed.  This fixes the issue of "in use by" issues.
 while [ $result -ne 0 ]; do
