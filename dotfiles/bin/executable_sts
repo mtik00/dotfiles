@@ -1,0 +1,373 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Check if the major Bash version is less than 5
+if [ "${BASH_VERSINFO:-0}" -lt 5 ]; then
+    echo "Error: Bash version is too old. Version 5 or higher is required." >&2
+    exit 1
+fi
+
+PROFILE=""
+SESSION_NAME="AssumableAdminRole"
+ROLE_ARN=""
+SERIAL_NUMBER=""
+REGION="us-gov-east-1"
+REMOTE_PROFILE="default"
+TOKEN=""
+UPDATE=0
+
+# Configure the logger
+FILENAME=$(basename ${BASH_SOURCE[1]-${BASH_SOURCE[0]}})
+LEVEL=${LOGLEVEL:-20}
+DEBUG=10
+INFO=20
+WARNING=30
+ERROR=40
+JSON=${JSONLOGGING:-0}
+
+USAGE=$(cat <<EOF
+Usage:
+    $(basename "$0") <args> TOKEN
+
+    Arguments:
+        --profile          : Local profile to obtain the creds
+        --serial-number    : The serial number of your MFA
+        --session-name     : The name of the session to create; Defaults to '${SESSION_NAME}'
+        --role-arn         : The ARN of the role to assume
+        --remote-profile   : The profile to use in the output; Defaults to '${REMOTE_PROFILE}'
+        --region           : The AWS region to use; Defaults to '${REGION}'
+        --update           : Update your credentials file; only used with --remote-profile'
+        -h|--help          : Show this message
+
+    This script is used to obtain new credentials with an assumable role using aws-cli.
+
+    Requirements:
+      - Working aws-cli application
+      - Proper access keys and profile configured (~/.aws/credentials)
+
+    Use your MFA device and add your 6 digit TOTP in place of "TOKEN".
+
+    Example:
+
+        sts \\
+          --region us-gov-east-1 \\
+          --profile dso \\
+          --session-name AssumableAdminRole \\
+          --serial-number 'arn:aws-us-gov:iam::329465265101:mfa/tim.mcfadden' \\
+          --role-arn 'arn:aws-us-gov:iam::329465265101:role/@AssumableAdminRole' \\
+          123456
+EOF
+)
+
+export COLOR_NC=''
+export COLOR_BLACK=''
+export COLOR_GRAY=''
+export COLOR_RED=''
+export COLOR_LIGHT_RED=''
+export COLOR_GREEN=''
+export COLOR_LIGHT_GREEN=''
+export COLOR_BROWN=''
+export COLOR_YELLOW=''
+export COLOR_BLUE=''
+export COLOR_LIGHT_BLUE=''
+export COLOR_PURPLE=''
+export COLOR_LIGHT_PURPLE=''
+export COLOR_CYAN=''
+export COLOR_LIGHT_CYAN=''
+export COLOR_LIGHT_GRAY=''
+export COLOR_WHITE=''
+
+if dircolors > /dev/null 2>&1; then
+    export COLOR_NC='\e[0m' # No Color
+    export COLOR_BLACK='\e[0;30m'
+    export COLOR_GRAY='\e[1;30m'
+    export COLOR_RED='\e[0;31m'
+    export COLOR_LIGHT_RED='\e[1;31m'
+    export COLOR_GREEN='\e[0;32m'
+    export COLOR_LIGHT_GREEN='\e[1;32m'
+    export COLOR_BROWN='\e[0;33m'
+    export COLOR_YELLOW='\e[1;33m'
+    export COLOR_BLUE='\e[0;34m'
+    export COLOR_LIGHT_BLUE='\e[1;34m'
+    export COLOR_PURPLE='\e[0;35m'
+    export COLOR_LIGHT_PURPLE='\e[1;35m'
+    export COLOR_CYAN='\e[0;36m'
+    export COLOR_LIGHT_CYAN='\e[1;36m'
+    export COLOR_LIGHT_GRAY='\e[0;37m'
+    export COLOR_WHITE='\e[1;37m'
+fi
+
+function get_color() {
+    local level=$1
+    local color="${COLOR_NC}"
+    case "${level}" in
+        "INFO")
+            color="${COLOR_CYAN}"
+            ;;
+        "WARNING")
+            color="${COLOR_YELLOW}"
+            ;;
+        "ERROR")
+            color="${COLOR_RED}"
+            ;;
+        *)
+            color="${COLOR_NC}"
+    esac
+    echo "${color}"
+}
+
+function get_levelno() {
+    local level=$1
+    local levelno=${INFO}
+
+    shopt -s nocasematch
+    case "${level}" in
+        debug)
+            levelno=${DEBUG}
+            ;;
+        info)
+            levelno=${INFO}
+            ;;
+        warning)
+            levelno=${WARNING}
+            ;;
+        error)
+            levelno=${ERROR}
+            ;;
+        *)
+            levelno=${INFO}
+    esac
+    echo $levelno
+}
+
+function log() {
+    local level=$1; shift
+    local description="$*"
+
+    local color=$(get_color "${level}")
+    printf "%(%Y-%m-%d %H:%M:%S %Z)T [${color} ${level} ${COLOR_NC}] ${FILENAME}:${BASH_LINENO[1]} $*\n" >&2
+}
+
+function log.debug() {
+    if [[ $LEVEL -le $DEBUG ]]; then
+        log "DEBUG" $*
+    fi
+}
+
+function log.info() {
+    if [[ $LEVEL -le $INFO ]]; then
+        log "INFO" $*
+    fi
+}
+
+function log.warning() {
+    if [[ $LEVEL -le $WARNING ]]; then
+        log "WARNING" $*
+    fi
+}
+
+function log.error() {
+    if [[ $LEVEL -le $ERROR ]]; then
+        log "ERROR" $*
+    fi
+}
+
+
+function usage() {
+    printf "%s\n" "${USAGE}"
+    exit 99
+}
+
+
+function argparse() {
+    while [[ $# -gt 0 ]]; do
+    case $1 in
+        --profile)
+            PROFILE="$2"
+            shift 2
+            ;;
+        --region)
+            REGION="$2"
+            shift 2
+            ;;
+        --remote-profile)
+            REMOTE_PROFILE="$2"
+            shift 2
+            ;;
+        --role-arn)
+            ROLE_ARN="$2"
+            shift 2
+            ;;
+        --serial-number)
+            SERIAL_NUMBER="$2"
+            shift 2
+            ;;
+        --session-name)
+            SESSION_NAME="$2"
+            shift 2
+            ;;
+        --update)
+            UPDATE=1
+            shift
+            ;;
+        -h|--help)
+            usage
+            ;;
+        --)
+            # Explicit separator between our options and the token
+            shift
+            break
+            ;;
+        *)
+            TOKEN="$1"
+            shift
+            break
+            ;;
+    esac
+    done
+
+    # Check to see if the token was passed to the script using something like
+    # `echo`.
+    if [[ -z "${TOKEN}" ]]; then
+        if ! [ -t 0 ]; then
+            TOKEN=$(cat)
+        fi
+    fi
+}
+
+
+function validate_args() {
+    local error=0
+
+    if [[ -z "${PROFILE}" ]]; then
+        log.error "PROFILE cannot be empty"
+        error=1
+    fi
+
+    if [[ -z "${SESSION_NAME}" ]]; then
+        log.error "SESSION_NAME cannot be empty"
+        error=1
+    fi
+        if [[ -z "${ROLE_ARN}" ]]; then
+        log.error "ROLE_ARN cannot be empty"
+        error=1
+    fi
+        if [[ -z "${SERIAL_NUMBER}" ]]; then
+        log.error "SERIAL_NUMBER cannot be empty"
+        error=1
+    fi
+        if [[ -z "${REGION}" ]]; then
+        log.error "REGION cannot be empty"
+        error=1
+    fi
+        if [[ -z "${REMOTE_PROFILE}" ]]; then
+        log.error "REMOTE_PROFILE cannot be empty"
+        error=1
+    fi
+        if [[ -z "${TOKEN}" ]]; then
+        log.error "TOKEN cannot be empty"
+        error=1
+    fi
+
+    if [[ $error -gt 0 ]]; then
+        usage
+        exit 1
+    fi
+}
+
+function get_credentials() {
+   if ! credentials=$(set -x;aws sts assume-role \
+        --profile ${PROFILE} \
+        --role-arn "${ROLE_ARN}" \
+        --role-session-name "${SESSION_NAME}" \
+        --serial-number "${SERIAL_NUMBER}" \
+        --duration 28800 \
+        --query 'Credentials.[AccessKeyId,SecretAccessKey,SessionToken,Expiration]' \
+        --output text \
+        --token-code ${TOKEN}
+    ); then
+        exit 1
+    fi
+
+    echo $credentials
+}
+
+function iso_to_local() {
+    local iso_timestamp="$1"
+    local format="${2:-%Y-%m-%d %r %Z}"
+
+    if [[ -z "$iso_timestamp" ]]; then
+        log.warning "Usage: iso_to_local_formatted <ISO_8601_timestamp> [format]"
+        log.warning "Example: iso_to_local_formatted '2025-05-30T04:04:28+00:00' '%Y-%m-%d %I:%M:%S %p'"
+        return 1
+    fi
+
+    date -d "$iso_timestamp" +"$format"
+}
+
+function output_ini() {
+    local credentials="${1:-}"
+
+    if [[ -z "${credentials}" ]]; then
+        echo "ERROR: No credentials to parse!"
+        return
+    fi
+
+    local access_key=$(echo "$credentials" | awk '{print $1}')
+    local secret_key=$(echo "$credentials" | awk '{print $2}')
+    local session_token=$(echo "$credentials" | awk '{print $3}')
+    local expiration=$(echo "$credentials" | awk '{print $4}')
+
+    local local_expiration=$(iso_to_local $expiration)
+
+    local CREDS="[$REMOTE_PROFILE]
+############################################################################
+# This token expires: ${local_expiration} / ${expiration}
+############################################################################
+region = $REGION
+aws_access_key_id = $access_key
+aws_secret_access_key = $secret_key
+aws_session_token = $session_token"
+
+    echo "$CREDS"
+}
+
+function update_aws_profile() {
+    local profile="$1"
+    local credentials="$2"
+
+    # Remove the entire existing profile section (including the [profile] line)
+    sed -i "/^\[$profile\]/,/^\[/{/^\[$profile\]/d; /^\[/!d;}" ~/.aws/credentials
+
+    # Add the new profile section
+    echo -e "$credentials" >> ~/.aws/credentials
+}
+
+function main() {
+    argparse "$@"
+    validate_args
+
+    local credentials=$(get_credentials)
+
+    if [[ -z "${credentials}" ]]; then
+        log.error "ERROR: Could not get credentials"
+        exit 1
+    fi
+
+    local ini=$(output_ini "${credentials}")
+    if [[ $? -eq 0 ]] && [[ $UPDATE -eq 1 ]] && [[ "${REMOTE_PROFILE}" != "default" ]]; then
+        update_aws_profile "$REMOTE_PROFILE" "$ini"
+        echo ""
+        log.info "~/.aws/credentials has been updated with:"
+        echo ""
+        echo "$ini"
+    else
+        echo ""
+        log.info "Copy the following items into a ~/.aws/credentials file:"
+        echo ""
+        echo "$ini"
+    fi
+}
+
+
+main "$@"
