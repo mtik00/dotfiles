@@ -12,6 +12,7 @@ set -euo pipefail
 {{- $parts := list ".installers" . -}}
 {{- $file := join "/" $parts -}}
 # hash: {{ $file | include | sha256sum }}
+echo "Running {{ . }}"
 source "{{ $.chezmoi.sourceDir }}/.installers/{{ . }}"
 {{ end }}
 
