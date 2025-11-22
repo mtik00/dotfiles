@@ -4,6 +4,9 @@ Home directory configuration using [chezmoi](https://www.chezmoi.io/).
 
 ## New Install / Get Updates
 
+> [!IMPORTANT]  
+> For new installs, make sure you create an SSH key (`ssh-keygen -t ecdsa -b 521`) and add the public key to GitHub.
+
 When you need to update the dotfiles, either for a new install or need to update to current changes, run the following 
 command.  You can run this multiple times without issues.
 
