@@ -1,0 +1,219 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+source "${SCRIPT_DIR}/lib/logger.sh"
+
+PROFILE="dso"
+SSH_CONFIG="$HOME/.ssh/dso/config-gitlab"
+SSH_KEY="$HOME/.ssh/gitlab-infra-new"
+USERNAME="ubuntu"
+PREFIX_TO_REMOVE="bluestaq-"
+FILTER="dso-gitlab"
+PROXY_JUMP="dso-ews"
+REGION="us-gov-east-1"
+BACKUP=1
+
+USAGE=$(cat <<EOF
+Usage:
+    $(basename "$0") <args>
+
+    Arguments:
+        -p|--profile  : The AWS profile to enable ($PROFILE)
+        -c|--config   : The config file to use
+        -r|--region   : AWS region to query ($REGION)
+        -u|--username : Username for connection ($USERNAME)
+        --proxy       : ProxyJump for connection ($PROXY_JUMP)
+        --prefix      : Remove this text from the hostname ($PREFIX_TO_REMOVE)
+        --filter      : Only include hosts matching this ($FILTER), after the --prefix is removed
+        --no-backup   : Don't backup your config
+        -h|--help     : Show this message
+
+    You can also set the log level.  Example:
+
+        LOGLEVEL=DEBUG $(basename "$0") <args>
+EOF
+)
+
+function usage() {
+    printf "%s\n" "${USAGE}"
+    exit 99
+}
+
+
+function argparse() {
+    while [[ $# -gt 0 ]]; do
+    case $1 in
+        -p|--profile)
+            PROFILE="$2"
+            shift 2
+            ;;
+        -r|--region)
+            REGION="$2"
+            shift 2
+            ;;
+        -c|--config)
+            SSH_CONFIG="$2"
+            shift 2
+            ;;
+        -u|--username)
+            USERNAME="$2"
+            shift 2
+            ;;
+        --prefix)
+            PREFIX_TO_REMOVE="$2"
+            shift 2
+            ;;
+        --proxy)
+            PROXY_JUMP="$2"
+            shift 2
+            ;;
+        --filter)
+            FILTER="$2"
+            shift 2
+            ;;
+        --no-backup)
+            BACKUP=0
+            shift
+            ;;
+        -h|--help)
+            usage
+            ;;
+        -*)
+            log.error "Unknown option: '$1'"
+            usage
+            ;;
+    esac
+    done
+}
+
+
+function validate_args() {
+    local error=0
+    log.debug "PROFILE:'${PROFILE}'"
+    log.debug "SSH_CONFIG:'${SSH_CONFIG}'"
+    log.debug "USERNAME:'${USERNAME}'"
+    log.debug "FILTER:'${FILTER}'"
+    log.debug "REGION:'${REGION}'"
+
+    if [[ -z "${PROFILE}" ]]; then
+        log.error "PROFILE must be set"
+        error=1
+    fi
+
+    if [[ -z "${REGION}" ]]; then
+        log.error "REGION must be set"
+        error=1
+    fi
+
+    if [[ -z "${SSH_CONFIG}" ]]; then
+        log.error "SSH_CONFIG must be set"
+        error=1
+    fi
+
+    if [[ -z "${USERNAME}" ]]; then
+        log.error "USERNAME must be set"
+        error=1
+    fi
+
+    if [[ "${BACKUP}" -ne 0 ]] && [[ "${BACKUP}" -ne 1 ]]; then
+        log.error "BACKUP is not valid"
+        error=1
+    fi
+
+    if [[ $error -gt 0 ]]; then
+        usage
+        exit 1
+    else
+        log.debug "args validated"
+    fi
+}
+
+function init_ssh_config_file() {
+    if [[ $BACKUP -eq 1 ]]; then
+        if [[ -f "$SSH_CONFIG" ]]; then
+            cp "$SSH_CONFIG" "$SSH_CONFIG.backup.$(date +%Y%m%d_%H%M%S)"
+            log.info "Backed up existing SSH config to $SSH_CONFIG.backup.$(date +%Y%m%d_%H%M%S)"
+        else
+            log.debug "No config to backup"
+        fi
+    else
+        log.debug "skipping backup"
+    fi
+
+    cat > "$SSH_CONFIG" << EOF
+# Auto-generated SSH config for AWS EC2 instances
+# Generated on: $(date)
+# Profile: $PROFILE
+
+EOF
+}
+
+function process() {
+    log.info "Fetching EC2 instances from AWS..."
+
+    aws --profile "$PROFILE" ec2 describe-instances \
+        --region "$REGION" \
+        --query 'Reservations[].Instances[?State.Name==`running`].[Tags[?Key==`Name`].Value|[0], PublicIpAddress, PrivateIpAddress]' \
+        --output text | while read -r name public_ip private_ip; do
+
+        # Remove the prefix from the name
+        short_name="${name#$PREFIX_TO_REMOVE}"
+
+        if [[ -n "${FILTER}" ]] && [[ "$short_name" != $FILTER* ]]; then
+            log.debug "...${short_name} does not match filter; skipping"
+            continue
+        fi
+
+        # Use public IP if available, otherwise private IP
+        ip_address="$public_ip"
+        if [[ "$public_ip" == "None" || -z "$public_ip" ]]; then
+            ip_address="$private_ip"
+        fi
+
+        # Skip if no IP address is available
+        if [[ "$ip_address" == "None" || -z "$ip_address" ]]; then
+            log.debug "Skipping $name - no IP address available"
+            continue
+        fi
+
+        log.info "Adding $short_name -> $ip_address"
+
+        # Add SSH config entry
+        if [[ -n "${PROXY_JUMP}" ]]; then
+            cat >> "$SSH_CONFIG" << EOF
+Host $short_name
+    HostName $ip_address
+    User $USERNAME
+    StrictHostKeyChecking no
+    UserKnownHostsFile /dev/null
+    ProxyJump $PROXY_JUMP
+    DynamicForward 9999
+
+EOF
+        else
+            cat >> "$SSH_CONFIG" << EOF
+Host $short_name
+    HostName $ip_address
+    User $USERNAME
+    IdentityFile $SSH_KEY
+    StrictHostKeyChecking no
+    UserKnownHostsFile /dev/null
+    DynamicForward 9999
+
+EOF
+    fi
+
+    done
+}
+
+function main() {
+    argparse "$@"
+    validate_args
+
+    init_ssh_config_file
+    process
+}
+
+
+main "$@"

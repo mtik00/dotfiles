@@ -2,16 +2,36 @@
 # -*- coding: utf-8 -*-
 
 import sys
-from pathlib import Path
 from subprocess import getoutput
+
+"""
+Use `pass` to store passwords for SSH things.
+
+NOTE: `ssh` won't normally use this script for passwords, just for key
+passphrases.  You can tell ssh to use this file first with:
+    SSH_ASKPASS_REQUIRE=prefer
+"""
+
 
 def main():
     args = "\n".join([str(x) for x in sys.argv])
+    with open("/home/timcfadd/.pass-ssh-askpass.log", "w") as fh:
+        fh.write(args)
 
     if "id_rsa" in args:
         password = getoutput("pass ssh/id_rsa")
     elif "tim.mcfadden.test" in args:
         password = getoutput("pass ssh/tim.mcfadden.test")
+    elif "jenkins" in args:
+        password = getoutput("pass ssh/jenkins")
+    elif "gitlab-staging" in args:
+        password = getoutput("pass ssh/gitlab-staging")
+    elif "mcfaddent@dev2" in args:
+        password = getoutput("pass ssh/udev-mcfaddent")
+    elif "mcfaddent@test" in args:
+        password = getoutput("pass ssh/gctest-mcfaddent")
+    elif "dso@10.100" in args:
+        password = getoutput("pass ssh/udev-dso")
     else:
         sys.exit(99)
 
