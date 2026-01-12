@@ -5,7 +5,7 @@
 function load-keychain() {
     for key in "$@"; do
         echo "adding key: ${key}"
-        /usr/bin/keychain -q --nogui $HOME/.ssh/${key}
+        /usr/bin/keychain -q $HOME/.ssh/${key}
         source $HOME/.keychain/$(hostname)-sh
     done
 
@@ -30,7 +30,7 @@ function add-to-keychain() {
     fi
 
     printf "adding key: ${key}\n"
-    /usr/bin/keychain -q --nogui "${keyfile}"
+    pass ssh/${key} | /usr/bin/keychain -q "${keyfile}"
     source $HOME/.keychain/$(hostname)-sh
 
     /usr/bin/keychain -l
