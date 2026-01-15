@@ -26,6 +26,11 @@ source "{{ .chezmoi.sourceDir }}/.installers/docker.sh"
 source "{{ .chezmoi.sourceDir }}/.installers/k8s.sh"
 {{ end }}
 
+{{- if .install_k8s }}
+# hash: {{ include ".installers/k9s.sh" | sha256sum }}
+source "{{ .chezmoi.sourceDir }}/.installers/k9s.sh"
+{{ end }}
+
 {{ if eq .config "work-laptop" }}
 # hash: {{ include ".installers/aws-cli.sh" | sha256sum }}
 source "{{ .chezmoi.sourceDir }}/.installers/aws-cli.sh"

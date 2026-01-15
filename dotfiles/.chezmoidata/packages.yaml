@@ -16,7 +16,6 @@ packages:
       - podman
       - ripgrep
       - unzip
-      - yq
       - zsh
     docker:
       - curl
