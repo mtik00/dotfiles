@@ -1,2 +1,4 @@
+# WARNING: THIS FILE IS MANAGED BY CHEZMOI
+
 [settings]
 python.uv_venv_auto = true
