@@ -4,6 +4,7 @@ set -euo pipefail
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 source "${SCRIPT_DIR}/lib/logger.sh"
 
+FULL_COMMAND="$0 $*"
 PROFILE="dso"
 SSH_CONFIG="$HOME/.ssh/dso/config-gitlab"
 SSH_KEY="$HOME/.ssh/gitlab-infra-new"
@@ -23,6 +24,7 @@ Usage:
         -c|--config   : The config file to use
         -r|--region   : AWS region to query ($REGION)
         -u|--username : Username for connection ($USERNAME)
+        --key         : SSH key to use ($SSH_KEY)
         --proxy       : ProxyJump for connection ($PROXY_JUMP)
         --prefix      : Remove this text from the hostname ($PREFIX_TO_REMOVE)
         --filter      : Only include hosts matching this ($FILTER), after the --prefix is removed
@@ -70,6 +72,10 @@ function argparse() {
             ;;
         --filter)
             FILTER="$2"
+            shift 2
+            ;;
+        --key)
+            SSH_KEY="$2"
             shift 2
             ;;
         --no-backup)
@@ -144,7 +150,7 @@ function init_ssh_config_file() {
     cat > "$SSH_CONFIG" << EOF
 # Auto-generated SSH config for AWS EC2 instances
 # Generated on: $(date)
-# Profile: $PROFILE
+# $FULL_COMMAND
 
 EOF
 }
@@ -185,6 +191,7 @@ function process() {
 Host $short_name
     HostName $ip_address
     User $USERNAME
+    IdentityFile $SSH_KEY
     StrictHostKeyChecking no
     UserKnownHostsFile /dev/null
     ProxyJump $PROXY_JUMP
