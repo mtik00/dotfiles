@@ -4,8 +4,15 @@
 # Change bindkeys to my defaults
 # https://linux.die.net/man/1/zshzle
 bindkey -v
-bindkey '\e[4~' end-of-line
+bindkey '\e[H' beginning-of-line
+bindkey '\e[F' end-of-line
 bindkey '\e[1~' beginning-of-line
+bindkey '\e[4~' end-of-line
+bindkey -M vicmd '\e[H' beginning-of-line
+bindkey -M vicmd '\e[F' end-of-line
+bindkey -M vicmd '\e[1~' beginning-of-line
+bindkey -M vicmd '\e[4~' end-of-line
+bindkey '\e[3~' delete-char
 bindkey '^R' history-incremental-search-backward
 bindkey "^S" history-incremental-search-forward
 
