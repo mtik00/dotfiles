@@ -7,8 +7,10 @@ set -euo pipefail
 # Including the sha256sum of each file allows this script to "change" if _any_ of the installers change.  This means that
 # all of the installers should be idempotent.
 
-{{ $files := list "00-setup.sh" "desk.sh" "starship.sh" "fzf.sh" "difftastic.sh" "mise.sh" "neovim.sh" "lazygit.sh" "uv.sh" "yq.sh" -}}
-{{- range $files -}}
+{{ $isArch := or (eq .chezmoi.osRelease.id "cachyos") (eq .chezmoi.osRelease.id "arch") (eq .chezmoi.osRelease.id "endeavouros") (contains "arch" (.chezmoi.osRelease.idLike | default "")) -}}
+
+{{ $universal := list "00-setup.sh" "desk.sh" "uv.sh" -}}
+{{- range $universal -}}
 {{- $parts := list ".installers" . -}}
 {{- $file := join "/" $parts -}}
 # hash: {{ $file | include | sha256sum }}
@@ -16,9 +18,27 @@ echo "Running {{ . }}"
 source "{{ $.chezmoi.sourceDir }}/.installers/{{ . }}"
 {{ end }}
 
+{{- if not $isArch -}}
+{{ $debianOnly := list "starship.sh" "fzf.sh" "difftastic.sh" "mise.sh" "neovim.sh" "lazygit.sh" "yq.sh" -}}
+{{- range $debianOnly -}}
+{{- $parts := list ".installers" . -}}
+{{- $file := join "/" $parts -}}
+# hash: {{ $file | include | sha256sum }}
+echo "Running {{ . }}"
+source "{{ $.chezmoi.sourceDir }}/.installers/{{ . }}"
+{{ end }}
+{{- end }}
+
+# Clone nvim config if not already present
+if [ ! -d "$HOME/.config/nvim" ]; then
+    git clone git@github.com:mtik00/nvim-config.git "$HOME/.config/nvim"
+fi
+
 {{- if .install_docker }}
+{{- if not $isArch }}
 # hash: {{ include ".installers/docker.sh" | sha256sum }}
 source "{{ .chezmoi.sourceDir }}/.installers/docker.sh"
+{{- end }}
 {{ end }}
 
 {{- if .install_k8s }}

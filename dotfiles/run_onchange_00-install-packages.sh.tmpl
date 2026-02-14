@@ -1,7 +1,14 @@
 #!/bin/bash
 set -euo pipefail
 
-{{- if or (eq .chezmoi.osRelease.id "debian") (contains "debian" (.chezmoi.osRelease.idLike | default "")) }}
+{{- if or (eq .chezmoi.osRelease.id "cachyos") (eq .chezmoi.osRelease.id "arch") (eq .chezmoi.osRelease.id "endeavouros") (contains "arch" (.chezmoi.osRelease.idLike | default "")) }}
+
+sudo pacman -S --needed --noconfirm {{ range .packages.arch.default -}}{{ . }} {{ end }}
+{{- if .install_docker }}
+sudo pacman -S --needed --noconfirm {{ range .packages.arch.docker -}}{{ . }} {{ end }}
+{{ end }}
+
+{{- else if or (eq .chezmoi.osRelease.id "debian") (contains "debian" (.chezmoi.osRelease.idLike | default "")) }}
 
 sudo apt-get update
 sudo apt-get install --upgrade --yes {{ range .packages.debian.default -}}{{ . }} {{ end }}

@@ -19,3 +19,32 @@ packages:
       - zsh
     docker:
       - curl
+  arch:
+    default:
+      - base-devel
+      - ca-certificates
+      - curl
+      - difftastic
+      - direnv
+      - bind
+      - fzf
+      - git
+      - tk
+      - htop
+      - jq
+      - keychain
+      - lazygit
+      - make
+      - mise
+      - neovim
+      - pass
+      - pass-otp
+      - podman
+      - ripgrep
+      - starship
+      - unzip
+      - yq
+      - zsh
+    docker:
+      - docker
+      - docker-compose
