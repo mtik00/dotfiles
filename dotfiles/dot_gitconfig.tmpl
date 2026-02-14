@@ -3,7 +3,11 @@
 [core]
 	editor = vim
 [user]
+{{- if eq .config "personal" }}
+	email = {{ .github_email }}
+{{- else }}
 	email = {{ .email }}
+{{- end }}
 	name = {{ .name }}
 [diff]
 	tool = difftastic
