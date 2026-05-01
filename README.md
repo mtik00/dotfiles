@@ -2,6 +2,14 @@
 
 Home directory configuration using [chezmoi](https://www.chezmoi.io/).
 
+## Install/Update Chezmoi
+
+Run this command to install or update Chezmoi (~/bin/chezmoi):
+
+```shell
+cd ~ && sh -c "$(curl -fsLS https://get.chezmoi.io)"
+```
+
 ## New Install / Get Updates
 
 > [!IMPORTANT]  

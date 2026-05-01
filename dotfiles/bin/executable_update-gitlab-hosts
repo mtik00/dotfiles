@@ -7,7 +7,7 @@ source "${SCRIPT_DIR}/lib/logger.sh"
 FULL_COMMAND="$0 $*"
 PROFILE="dso"
 SSH_CONFIG="$HOME/.ssh/dso/config-gitlab"
-SSH_KEY="$HOME/.ssh/gitlab-infra-new"
+SSH_KEY="$HOME/.ssh/dso/dso-gitlab-ews"
 USERNAME="ubuntu"
 PREFIX_TO_REMOVE="bluestaq-"
 FILTER="dso-gitlab"
@@ -171,11 +171,7 @@ function process() {
             continue
         fi
 
-        # Use public IP if available, otherwise private IP
-        ip_address="$public_ip"
-        if [[ "$public_ip" == "None" || -z "$public_ip" ]]; then
-            ip_address="$private_ip"
-        fi
+        ip_address="$private_ip"
 
         # Skip if no IP address is available
         if [[ "$ip_address" == "None" || -z "$ip_address" ]]; then

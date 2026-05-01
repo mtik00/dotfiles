@@ -30,6 +30,8 @@ def main():
         password = getoutput("pass ssh/udev-mcfaddent")
     elif "mcfaddent@test" in args:
         password = getoutput("pass ssh/gctest-mcfaddent")
+    elif "mcfaddent@10.100.10.10" in args:
+        password = getoutput("pass ssh/gctest-mcfaddent")
     elif "dso@10.100" in args:
         password = getoutput("pass ssh/udev-dso")
     else:
