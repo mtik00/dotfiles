@@ -16,6 +16,7 @@ packages:
       - podman
       - ripgrep
       - unzip
+      - xclip
       - zsh
     docker:
       - curl
@@ -43,6 +44,7 @@ packages:
       - ripgrep
       - starship
       - unzip
+      - xclip
       - yq
       - zsh
     docker:
