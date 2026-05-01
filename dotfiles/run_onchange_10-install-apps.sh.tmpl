@@ -9,7 +9,7 @@ set -euo pipefail
 
 {{ $isArch := or (eq .chezmoi.osRelease.id "cachyos") (eq .chezmoi.osRelease.id "arch") (eq .chezmoi.osRelease.id "endeavouros") (contains "arch" (.chezmoi.osRelease.idLike | default "")) -}}
 
-{{ $universal := list "00-setup.sh" "01-rust.sh" "desk.sh" "uv.sh" "go.sh" "tree-sitter.sh" "fd-find.sh" -}}
+{{ $universal := list "00-setup.sh" "01-rust.sh" "desk.sh" "uv.sh" "go.sh" "tree-sitter.sh" "fd-find.sh" "fzf.sh" -}}
 {{- range $universal -}}
 {{- $parts := list ".installers" . -}}
 {{- $file := join "/" $parts -}}
@@ -19,7 +19,7 @@ source "{{ $.chezmoi.sourceDir }}/.installers/{{ . }}"
 {{ end }}
 
 {{- if not $isArch -}}
-{{ $debianOnly := list "starship.sh" "fzf.sh" "difftastic.sh" "mise.sh" "neovim.sh" "lazygit.sh" "yq.sh" -}}
+{{ $debianOnly := list "starship.sh" "difftastic.sh" "mise.sh" "neovim.sh" "lazygit.sh" "yq.sh" -}}
 {{- range $debianOnly -}}
 {{- $parts := list ".installers" . -}}
 {{- $file := join "/" $parts -}}
