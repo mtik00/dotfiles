@@ -38,6 +38,7 @@ fi
 ###############################################################################
 
 [[ -d "${HOME}/.local/share/zsh-autosuggestions" ]] && source "${HOME}/.local/share/zsh-autosuggestions/zsh-autosuggestions.zsh"
+[[ -f "${HOME}/.cargo/env" ]] && source "${HOME}/.cargo/env"
 
 # Configure history ###########################################################
 setopt APPEND_HISTORY \
