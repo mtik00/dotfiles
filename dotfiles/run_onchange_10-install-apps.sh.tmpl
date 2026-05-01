@@ -19,7 +19,7 @@ source "{{ $.chezmoi.sourceDir }}/.installers/{{ . }}"
 {{ end }}
 
 {{- if not $isArch -}}
-{{ $debianOnly := list "starship.sh" "fzf.sh" "difftastic.sh" "mise.sh" "neovim.sh" "lazygit.sh" "yq.sh" -}}
+{{ $debianOnly := list "starship.sh" "fzf.sh" "difftastic.sh" "mise.sh" "neovim.sh" "lazygit.sh" "yq.sh" "tree-sitter.sh" -}}
 {{- range $debianOnly -}}
 {{- $parts := list ".installers" . -}}
 {{- $file := join "/" $parts -}}

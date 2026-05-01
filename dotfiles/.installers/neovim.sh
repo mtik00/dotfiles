@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-## Install difftastic
+## Install neovim
 if ! command -v nvim > /dev/null; then
     readonly NEOVIM_LATEST_URL=$(curl -s https://api.github.com/repos/neovim/neovim/releases/latest | grep -v "nightly" | grep browser_download_url | grep nvim-linux-x86_64.tar.gz\" | cut -d '"' -f 4)
     curl -L -o /tmp/nvim.tgz "${NEOVIM_LATEST_URL}"
