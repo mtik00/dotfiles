@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+INSTALLERS_DIR="${CHEZMOI_SOURCE_DIR:-$(chezmoi source-path)}/.installers"
+
+if [[ $# -eq 0 ]]; then
+    echo "Available installers:"
+    for f in "${INSTALLERS_DIR}"/*.sh; do
+        echo "  $(basename "$f" .sh)"
+    done
+    echo
+    echo "Usage: run-installer <name> [name...]"
+    exit 0
+fi
+
+export HOME_BIN="${HOME}/bin"
+export PATH="${HOME}/bin:$PATH"
+mkdir -p "${HOME}/bin"
+
+for name in "$@"; do
+    script="${INSTALLERS_DIR}/${name%.sh}.sh"
+    if [[ ! -f "$script" ]]; then
+        echo "ERROR: installer not found: $name" >&2
+        exit 1
+    fi
+    echo "==> Running ${name%.sh}.sh"
+    source "$script"
+done
