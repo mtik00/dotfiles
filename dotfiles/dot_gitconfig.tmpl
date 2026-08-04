@@ -7,6 +7,7 @@
 	email = {{ .github_email }}
 {{- else }}
 	email = {{ .email }}
+	signingkey = 2DEA5495FCA7C5F2
 {{- end }}
 	name = {{ .name }}
 [diff]
@@ -46,6 +47,8 @@
 	helper = cache
 {{ end }}
 {{- if eq .config "work-laptop"}}
+[commit]
+	gpgsign = true
 [includeIf "gitdir:~/code/personal/"]
 	path = ~/code/personal/.gitconfig
 [credential "https://gitlab.bluestaq.com"]

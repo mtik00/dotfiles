@@ -33,3 +33,10 @@ format = ' 🈸:[$env_value](fg:green)'
 
 [env_var.DESK_NAME]
 format = '📝:[$env_value](fg:green)'
+
+[custom.kubernetes]
+command = 'kubectl config current-context 2>/dev/null | sed "s|^arn:aws[^:]*:eks:[^:]*:[0-9]*:cluster/||"'
+when = 'test -f ~/.config/starship/kube-on'
+shell = ['bash', '--noprofile', '--norc']
+format = ' ☸ :[$output](fg:blue)'
+description = 'Current kubectl context — toggle with kubeon/kubeoff'
