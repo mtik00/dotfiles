@@ -1,0 +1,263 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+source "${SCRIPT_DIR}/lib/logger.sh"
+
+POSITIONAL_ARGS=()
+LEVEL=20
+MIN_DAYS=3
+
+ARCH=$(uname -m)
+case "$ARCH" in
+    x86_64)  ARCH="amd64" ;;
+    aarch64) ARCH="arm64" ;;
+    *)       printf "Unsupported architecture: %s\n" "$ARCH" >&2; exit 1 ;;
+esac
+
+USAGE=$(cat <<EOF
+Usage:
+    $(basename "$0") <args> [binary...|all]
+
+    Binaries:
+        jq, glab, claude, yq
+
+    Arguments:
+        -d|--debug      : Print debug statements
+        -h|--help       : Show this message
+EOF
+)
+
+# --- per-tool config tables -------------------------------------------------
+
+declare -A TOOL_API_URL=(
+    [jq]="https://api.github.com/repos/jqlang/jq/releases"
+    [glab]="https://gitlab.com/api/v4/projects/34675721/releases"
+    [claude]="https://api.github.com/repos/anthropics/claude-code/releases"
+    [yq]="https://api.github.com/repos/mikefarah/yq/releases"
+)
+declare -A TOOL_VERSION_FILTER=(
+    [jq]='.tag_name'
+    [glab]='.tag_name'
+    [claude]='.tag_name'
+    [yq]='.tag_name'
+)
+declare -A TOOL_DATE_FILTER=(
+    [jq]='.published_at'
+    [glab]='.released_at'
+    [claude]='.published_at'
+    [yq]='.published_at'
+)
+declare -A TOOL_RELEASE_URL=(
+    [jq]="https://github.com/jqlang/jq/releases"
+    [glab]="https://gitlab.com/gitlab-org/cli/-/releases"
+    [claude]="https://github.com/anthropics/claude-code/releases"
+    [yq]="https://github.com/mikefarah/yq/releases"
+)
+
+function usage() {
+    printf "%s\n" "${USAGE}"
+    exit 99
+}
+
+function argparse() {
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            -d|--debug)
+                LEVEL=10
+                shift
+                ;;
+            -h|--help)
+                usage
+                ;;
+            -*)
+                log.error "Unknown option: '$1'"
+                usage
+                ;;
+            *)
+                POSITIONAL_ARGS+=("$1")
+                shift
+                ;;
+        esac
+    done
+}
+
+function validate_args() {
+    local error=0
+    log.debug "Validating args"
+
+    if [[ ${#POSITIONAL_ARGS[@]} -eq 0 ]]; then
+        log.error "No target specified"
+        error=1
+    fi
+
+    for arg in "${POSITIONAL_ARGS[@]}"; do
+        if [[ "$arg" != "all" && -z "${TOOL_API_URL[$arg]:-}" ]]; then
+            log.error "Unknown target: '$arg'"
+            error=1
+        fi
+    done
+
+    if [[ $error -gt 0 ]]; then
+        usage
+        exit 1
+    else
+        log.info "OK"
+    fi
+}
+
+# --- per-tool current-version + install -------------------------------------
+
+function current_version_jq() {
+    if command -v jq >/dev/null 2>&1; then
+        jq --version
+    else
+        echo "null"
+    fi
+}
+
+function current_version_glab() {
+    if command -v glab >/dev/null 2>&1; then
+        printf "v%s" "$(glab --version | awk '{print $2}')"
+    else
+        echo "null"
+    fi
+}
+
+function current_version_claude() {
+    if command -v claude >/dev/null 2>&1; then
+        claude --version | awk '{printf "v%s", $1}'
+    else
+        echo "null"
+    fi
+}
+
+function current_version_yq() {
+    if command -v yq >/dev/null 2>&1; then
+        yq --version | awk '{print $NF}'
+    else
+        echo "null"
+    fi
+}
+
+function install_jq() {
+    local latest_version="$1"
+    local install_dir="$HOME/bin"
+    local dest_binary="${install_dir}/jq"
+    local url="https://github.com/jqlang/jq/releases/download/${latest_version}/jq-linux-${ARCH}"
+
+    mkdir -p "$install_dir"
+    curl -s -fSL -o "${dest_binary}" "$url"
+    chmod +x "${dest_binary}"
+    log.info "Installed jq ${latest_version} to ${dest_binary}"
+}
+
+function install_glab() {
+    local latest_version="$1"
+    local tmp_dir="/tmp/glab-install"
+    local install_dir="$HOME/bin"
+    local dest_binary="${install_dir}/glab"
+    local ver_novee="${latest_version#v}"
+    local enc_ver enc_tarball tarball url
+
+    rm -rf "${tmp_dir}"
+    mkdir -p "${tmp_dir}" "${install_dir}"
+
+    enc_ver=$(printf '%s' "$ver_novee" | sed 's/\./%2E/g')
+    tarball="glab_${ver_novee}_linux_${ARCH}.tar.gz"
+    enc_tarball=$(printf '%s' "$tarball" | sed 's/\./%2E/g')
+    url="https://gitlab.com/api/v4/projects/gitlab-org%2Fcli/packages/generic/glab/${enc_ver}/${enc_tarball}"
+
+    log.debug "tarball: ${tarball}"
+    log.debug "url: ${url//%/%%}"
+
+    curl -s -fSL -o "${tmp_dir}/${tarball}" "$url"
+    tar -xzf "${tmp_dir}/${tarball}" -C "${tmp_dir}"
+
+    install -m 0755 "${tmp_dir}/bin/glab" "${dest_binary}"
+    log.info "Installed glab ${latest_version} to ${dest_binary}"
+
+    rm -rf "${tmp_dir}"
+}
+
+function install_claude() {
+    local latest_version="$1"
+    curl -fsSL https://claude.ai/install.sh | bash
+    log.info "Installed claude code ${latest_version}"
+}
+
+function install_yq() {
+    local latest_version="$1"
+    local install_dir="$HOME/bin"
+    local dest_binary="${install_dir}/yq"
+    local url="https://github.com/mikefarah/yq/releases/download/${latest_version}/yq_linux_${ARCH}"
+
+    log.debug "${url}"
+
+    mkdir -p "$install_dir"
+    curl -s -fSL -o "${dest_binary}" "$url"
+    chmod +x "${dest_binary}"
+    log.info "Installed jq ${latest_version} to ${dest_binary}"
+}
+
+# --- generic update engine ---------------------------------------------------
+
+function fetch_latest() {
+    local tool="$1"
+    curl -s -H "Accept: application/json" "${TOOL_API_URL[$tool]}" \
+        | jq -r "[.[0] | ${TOOL_VERSION_FILTER[$tool]}, ${TOOL_DATE_FILTER[$tool]}] | @tsv"
+}
+
+function update_tool() {
+    local tool="$1"
+    local current_version latest_version release_date
+    local release_epoch now_epoch threshold
+
+    current_version=$("current_version_${tool}")
+    log.info "Checking for ${tool} update from ${current_version}..."
+
+    IFS=$'\t' read -r latest_version release_date < <(fetch_latest "$tool")
+    log.debug "${tool} latest version: '${latest_version}', released at: '${release_date}'"
+
+    if [[ "${latest_version}" == "${current_version}" ]]; then
+        log.info "${tool} already latest: ${latest_version}"
+        log.info "${TOOL_RELEASE_URL[$tool]}"
+        return
+    fi
+
+    release_epoch=$(date -d "$release_date" +%s)
+    now_epoch=$(date +%s)
+    age_seconds=$((now_epoch - release_epoch))
+    age_days=$((age_seconds / 86400))
+    threshold=$((MIN_DAYS * 86400))
+
+    log.debug "release_epoch: '${release_epoch}'; now_epoch: '${now_epoch}'; age_days: '${age_days}'"
+
+    if [ "$age_seconds" -le "$threshold" ]; then
+        log.info "${latest_version} is ${age_days}d old (newer than ${MIN_DAYS}d threshold); waiting"
+        log.info "${TOOL_RELEASE_URL[$tool]}"
+        return
+    fi
+
+    "install_${tool}" "${latest_version}"
+    log.info "${tool} ${current_version} -> ${latest_version}"
+    log.info "${TOOL_RELEASE_URL[$tool]}"
+}
+
+function main() {
+    argparse "$@"
+    validate_args
+
+    local targets=("${POSITIONAL_ARGS[@]}")
+
+    if [[ " ${targets[*]} " =~ [[:space:]]all[[:space:]] ]]; then
+        targets=("${!TOOL_API_URL[@]}")
+    fi
+
+    for tool in "${targets[@]}"; do
+        log.info "#############################################"
+        update_tool "$tool"
+    done
+}
+
+main "$@"
