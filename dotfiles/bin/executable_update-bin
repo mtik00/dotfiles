@@ -163,11 +163,24 @@ function current_version_rtk() {
     fi
 }
 
+# GitHub serves release assets from the releases page itself, so TOOL_RELEASE_URL
+# doubles as the download base and the repo slug stays spelled in one place.
+# Not usable for glab (its download host, human releases page, and API are three
+# unrelated URLs) or claude (installed via a script, no asset download).
+function github_asset_url() {
+    local tool="${1:?tool required}"
+    local version="${2:?version required}"
+    local asset="${3:?asset name required}"
+
+    printf '%s/download/%s/%s' "${TOOL_RELEASE_URL[$tool]}" "${version}" "${asset}"
+}
+
 function install_jq() {
     local version="$1"
     local install_dir="$HOME/bin"
     local dest_binary="${install_dir}/jq"
-    local url="https://github.com/jqlang/jq/releases/download/${version}/jq-linux-${ARCH}"
+    local url
+    url=$(github_asset_url jq "${version}" "jq-linux-${ARCH}")
 
     mkdir -p "$install_dir"
     curl -s -fSL -o "${dest_binary}" "$url"
@@ -215,7 +228,8 @@ function install_yq() {
     local version="$1"
     local install_dir="$HOME/bin"
     local dest_binary="${install_dir}/yq"
-    local url="https://github.com/mikefarah/yq/releases/download/${version}/yq_linux_${ARCH}"
+    local url
+    url=$(github_asset_url yq "${version}" "yq_linux_${ARCH}")
 
     log.debug "${url}"
 
@@ -245,7 +259,7 @@ function install_rtk() {
 
     # The asset name carries no version — the tag in the path selects it.
     tarball="rtk-${target}.tar.gz"
-    url="https://github.com/rtk-ai/rtk/releases/download/${version}/${tarball}"
+    url=$(github_asset_url rtk "${version}" "${tarball}")
 
     log.debug "tarball: ${tarball}"
     log.debug "url: ${url}"
