@@ -21,7 +21,7 @@ Usage:
     $(basename "$0") <args> [binary...|all]
 
     Binaries:
-        jq, glab, claude, yq
+        jq, glab, claude, yq, rtk
 
     Arguments:
         -d|--debug      : Print debug statements
@@ -36,24 +36,38 @@ declare -A TOOL_API_URL=(
     [glab]="https://gitlab.com/api/v4/projects/34675721/releases"
     [claude]="https://api.github.com/repos/anthropics/claude-code/releases"
     [yq]="https://api.github.com/repos/mikefarah/yq/releases"
+    # per_page is raised because rtk cuts rc builds constantly — only ~3 of the
+    # most recent 30 tags are stable, so the default page can hold no stable
+    # release at all during an rc burst.
+    [rtk]="https://api.github.com/repos/rtk-ai/rtk/releases?per_page=100"
 )
 declare -A TOOL_VERSION_FILTER=(
     [jq]='.tag_name'
     [glab]='.tag_name'
     [claude]='.tag_name'
     [yq]='.tag_name'
+    [rtk]='.tag_name'
 )
 declare -A TOOL_DATE_FILTER=(
     [jq]='.published_at'
     [glab]='.released_at'
     [claude]='.published_at'
     [yq]='.published_at'
+    [rtk]='.published_at'
 )
 declare -A TOOL_RELEASE_URL=(
     [jq]="https://github.com/jqlang/jq/releases"
     [glab]="https://gitlab.com/gitlab-org/cli/-/releases"
     [claude]="https://github.com/anthropics/claude-code/releases"
     [yq]="https://github.com/mikefarah/yq/releases"
+    [rtk]="https://github.com/rtk-ai/rtk/releases"
+)
+# Optional per-tool jq filter applied to each release before the version/date
+# projection; defaults to '.' (keep everything). rtk publishes its rc builds as
+# prereleases tagged dev-0.45.0-rc.350 — version_number() reads that as 0.45.0
+# and would rank it above stable v0.44.2, so those have to be dropped here.
+declare -A TOOL_RELEASE_SELECT=(
+    [rtk]='select(.prerelease == false)'
 )
 
 function usage() {
@@ -141,6 +155,14 @@ function current_version_yq() {
     fi
 }
 
+function current_version_rtk() {
+    if command -v rtk >/dev/null 2>&1; then
+        printf "v%s" "$(rtk --version | awk '{print $2}')"
+    else
+        echo "null"
+    fi
+}
+
 function install_jq() {
     local version="$1"
     local install_dir="$HOME/bin"
@@ -203,12 +225,47 @@ function install_yq() {
     log.info "Installed yq ${version} to ${dest_binary}"
 }
 
+function install_rtk() {
+    local version="$1"
+    local tmp_dir="/tmp/rtk-install"
+    local install_dir="$HOME/bin"
+    local dest_binary="${install_dir}/rtk"
+    local target tarball url
+
+    # Assets are named by rust target triple, and the linux libc flavor is not
+    # consistent across arches: x86_64 ships musl, aarch64 ships gnu.
+    case "$ARCH" in
+        amd64) target="x86_64-unknown-linux-musl" ;;
+        arm64) target="aarch64-unknown-linux-gnu" ;;
+        *)     log.error "No rtk release asset for ${ARCH}"; return 1 ;;
+    esac
+
+    rm -rf "${tmp_dir}"
+    mkdir -p "${tmp_dir}" "${install_dir}"
+
+    # The asset name carries no version — the tag in the path selects it.
+    tarball="rtk-${target}.tar.gz"
+    url="https://github.com/rtk-ai/rtk/releases/download/${version}/${tarball}"
+
+    log.debug "tarball: ${tarball}"
+    log.debug "url: ${url}"
+
+    curl -s -fSL -o "${tmp_dir}/${tarball}" "$url"
+    tar -xzf "${tmp_dir}/${tarball}" -C "${tmp_dir}"
+
+    install -m 0755 "${tmp_dir}/rtk" "${dest_binary}"
+    log.info "Installed rtk ${version} to ${dest_binary}"
+
+    rm -rf "${tmp_dir}"
+}
+
 # --- generic update engine ---------------------------------------------------
 
 function fetch_releases() {
     local tool="$1"
+    local select_filter="${TOOL_RELEASE_SELECT[$tool]:-.}"
     curl -s -H "Accept: application/json" "${TOOL_API_URL[$tool]}" \
-        | jq -r ".[] | [${TOOL_VERSION_FILTER[$tool]}, ${TOOL_DATE_FILTER[$tool]}] | @tsv"
+        | jq -r ".[] | ${select_filter} | [${TOOL_VERSION_FILTER[$tool]}, ${TOOL_DATE_FILTER[$tool]}] | @tsv"
 }
 
 # Strip any tag prefix so versions compare numerically: v1.112.0 -> 1.112.0,
