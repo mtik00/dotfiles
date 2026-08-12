@@ -21,7 +21,7 @@ Usage:
     $(basename "$0") <args> [binary...|all]
 
     Binaries:
-        jq, glab, claude, yq, rtk
+        jq, glab, claude, yq, rtk, kubelogin
 
     Arguments:
         -d|--debug      : Print debug statements
@@ -40,6 +40,7 @@ declare -A TOOL_API_URL=(
     # most recent 30 tags are stable, so the default page can hold no stable
     # release at all during an rc burst.
     [rtk]="https://api.github.com/repos/rtk-ai/rtk/releases?per_page=100"
+    [kubelogin]="https://api.github.com/repos/Azure/kubelogin/releases"
 )
 declare -A TOOL_VERSION_FILTER=(
     [jq]='.tag_name'
@@ -47,6 +48,7 @@ declare -A TOOL_VERSION_FILTER=(
     [claude]='.tag_name'
     [yq]='.tag_name'
     [rtk]='.tag_name'
+    [kubelogin]='.tag_name'
 )
 declare -A TOOL_DATE_FILTER=(
     [jq]='.published_at'
@@ -54,6 +56,7 @@ declare -A TOOL_DATE_FILTER=(
     [claude]='.published_at'
     [yq]='.published_at'
     [rtk]='.published_at'
+    [kubelogin]='.published_at'
 )
 declare -A TOOL_RELEASE_URL=(
     [jq]="https://github.com/jqlang/jq/releases"
@@ -61,6 +64,7 @@ declare -A TOOL_RELEASE_URL=(
     [claude]="https://github.com/anthropics/claude-code/releases"
     [yq]="https://github.com/mikefarah/yq/releases"
     [rtk]="https://github.com/rtk-ai/rtk/releases"
+    [kubelogin]="https://github.com/Azure/kubelogin/releases"
 )
 # Optional per-tool jq filter applied to each release before the version/date
 # projection; defaults to '.' (keep everything). rtk publishes its rc builds as
@@ -155,6 +159,16 @@ function current_version_yq() {
     fi
 }
 
+function current_version_kubelogin() {
+    if command -v kubelogin >/dev/null 2>&1; then
+        # `kubelogin --version` prints the version only on its "git hash" line,
+        # as "git hash: v0.2.19/<sha>" — the "kubelogin version" line is empty.
+        kubelogin --version | awk -F'[ /]' '/^git hash:/ {print $3}'
+    else
+        echo "null"
+    fi
+}
+
 function current_version_rtk() {
     if command -v rtk >/dev/null 2>&1; then
         printf "v%s" "$(rtk --version | awk '{print $2}')"
@@ -237,6 +251,33 @@ function install_yq() {
     curl -s -fSL -o "${dest_binary}" "$url"
     chmod +x "${dest_binary}"
     log.info "Installed yq ${version} to ${dest_binary}"
+}
+
+function install_kubelogin() {
+    local version="$1"
+    local tmp_dir="/tmp/kubelogin-install"
+    local install_dir="$HOME/bin"
+    local dest_binary="${install_dir}/kubelogin"
+    local zipfile url
+
+    rm -rf "${tmp_dir}"
+    mkdir -p "${tmp_dir}" "${install_dir}"
+
+    # Assets are zips, not tarballs, and the binary sits at bin/linux_<arch>/
+    # inside them rather than at the root.
+    zipfile="kubelogin-linux-${ARCH}.zip"
+    url=$(github_asset_url kubelogin "${version}" "${zipfile}")
+
+    log.debug "zipfile: ${zipfile}"
+    log.debug "url: ${url}"
+
+    curl -s -fSL -o "${tmp_dir}/${zipfile}" "$url"
+    unzip -q -o "${tmp_dir}/${zipfile}" -d "${tmp_dir}"
+
+    install -m 0755 "${tmp_dir}/bin/linux_${ARCH}/kubelogin" "${dest_binary}"
+    log.info "Installed kubelogin ${version} to ${dest_binary}"
+
+    rm -rf "${tmp_dir}"
 }
 
 function install_rtk() {
