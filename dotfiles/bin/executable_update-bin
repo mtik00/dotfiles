@@ -21,7 +21,7 @@ Usage:
     $(basename "$0") <args> [binary...|all]
 
     Binaries:
-        jq, glab, claude, yq, rtk, kubelogin
+        jq, glab, claude, yq, rtk, kubelogin, sops
 
     Arguments:
         -d|--debug      : Print debug statements
@@ -41,6 +41,7 @@ declare -A TOOL_API_URL=(
     # release at all during an rc burst.
     [rtk]="https://api.github.com/repos/rtk-ai/rtk/releases?per_page=100"
     [kubelogin]="https://api.github.com/repos/Azure/kubelogin/releases"
+    [sops]="https://api.github.com/repos/getsops/sops/releases"
 )
 declare -A TOOL_VERSION_FILTER=(
     [jq]='.tag_name'
@@ -49,6 +50,7 @@ declare -A TOOL_VERSION_FILTER=(
     [yq]='.tag_name'
     [rtk]='.tag_name'
     [kubelogin]='.tag_name'
+    [sops]='.tag_name'
 )
 declare -A TOOL_DATE_FILTER=(
     [jq]='.published_at'
@@ -57,6 +59,7 @@ declare -A TOOL_DATE_FILTER=(
     [yq]='.published_at'
     [rtk]='.published_at'
     [kubelogin]='.published_at'
+    [sops]='.published_at'
 )
 declare -A TOOL_RELEASE_URL=(
     [jq]="https://github.com/jqlang/jq/releases"
@@ -65,6 +68,7 @@ declare -A TOOL_RELEASE_URL=(
     [yq]="https://github.com/mikefarah/yq/releases"
     [rtk]="https://github.com/rtk-ai/rtk/releases"
     [kubelogin]="https://github.com/Azure/kubelogin/releases"
+    [sops]="https://github.com/getsops/sops/releases"
 )
 # Optional per-tool jq filter applied to each release before the version/date
 # projection; defaults to '.' (keep everything). rtk publishes its rc builds as
@@ -169,6 +173,16 @@ function current_version_kubelogin() {
     fi
 }
 
+function current_version_sops() {
+    if command -v sops >/dev/null 2>&1; then
+        # --disable-version-check stops `sops --version` from calling GitHub just to
+        # append "(latest)" to the line; the version is $2 with or without it.
+        printf "v%s" "$(sops --disable-version-check --version 2>/dev/null | awk '{print $2}')"
+    else
+        echo "null"
+    fi
+}
+
 function current_version_rtk() {
     if command -v rtk >/dev/null 2>&1; then
         printf "v%s" "$(rtk --version | awk '{print $2}')"
@@ -251,6 +265,22 @@ function install_yq() {
     curl -s -fSL -o "${dest_binary}" "$url"
     chmod +x "${dest_binary}"
     log.info "Installed yq ${version} to ${dest_binary}"
+}
+
+function install_sops() {
+    local version="$1"
+    local install_dir="$HOME/bin"
+    local dest_binary="${install_dir}/sops"
+    local url
+    # The asset is a bare binary whose name carries the tag: sops-v3.13.3.linux.amd64
+    url=$(github_asset_url sops "${version}" "sops-${version}.linux.${ARCH}")
+
+    log.debug "${url}"
+
+    mkdir -p "$install_dir"
+    curl -s -fSL -o "${dest_binary}" "$url"
+    chmod +x "${dest_binary}"
+    log.info "Installed sops ${version} to ${dest_binary}"
 }
 
 function install_kubelogin() {
