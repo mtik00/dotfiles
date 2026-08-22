@@ -8,6 +8,8 @@
 {{- $github_username := promptStringOnce . "github_username" "GitHub username" "mtik00" -}}
 {{- $install_docker := promptBoolOnce . "install_docker" "Install Docker" -}}
 {{- $install_k8s := promptBoolOnce . "install_k8s" "Install k8s utilities" -}}
+{{- $winapps_rdp_username := promptStringOnce . "winapps_rdp_username" "WinApps Windows RDP username" "MyWindowsUser" -}}
+{{- $winapps_rdp_password := promptStringOnce . "winapps_rdp_password" "WinApps Windows RDP password (RDP is exposed on 0.0.0.0:3389; do not keep the stock default)" -}}
 
 [data]
     config = {{ $config | quote }}
@@ -18,6 +20,8 @@
     github_email = {{ $github_email | quote }}
     install_docker = {{ $install_docker }}
     install_k8s = {{ $install_k8s }}
+    winapps_rdp_username = {{ $winapps_rdp_username | quote }}
+    winapps_rdp_password = {{ $winapps_rdp_password | quote }}
     install_op = false
     github_askpass = false
     wsl = {{ contains "WSL" .chezmoi.kernel.osrelease }}

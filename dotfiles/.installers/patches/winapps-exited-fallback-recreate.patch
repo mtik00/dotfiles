@@ -1,0 +1,21 @@
+diff --git a/bin/winapps b/bin/winapps
+index 0b73d34..a6efaa8 100755
+--- a/bin/winapps
++++ b/bin/winapps
+@@ -502,7 +502,15 @@ function waCheckContainerRunning() {
+         "exited")
+             dprint "WINDOWS SHUT OFF. BOOTING WINDOWS."
+             notify-send --expire-time=4000 --icon="dialog-info" --app-name="WinApps" --urgency="low" "WinApps" "Booting Windows."
+-            $COMPOSE_COMMAND --file "$COMPOSE_PATH" start &>/dev/null
++            if ! $COMPOSE_COMMAND --file "$COMPOSE_PATH" start &>/dev/null; then
++                # 'start' can fail if a mounted device path (e.g. USB passthrough)
++                # went stale since the container was created (rootless podman
++                # snapshots /dev/bus/usb nodes at creation time, and they drift on
++                # replug/reboot). Fall back to a full recreate, same as the 'dead' case.
++                dprint "WINDOWS FAILED TO START. RECREATING WINDOWS CONTAINER."
++                notify-send --expire-time=4000 --icon="dialog-info" --app-name="WinApps" --urgency="low" "WinApps" "Boot failed; re-creating and booting Windows."
++                $COMPOSE_COMMAND --file "$COMPOSE_PATH" down &>/dev/null && $COMPOSE_COMMAND --file "$COMPOSE_PATH" up -d &>/dev/null
++            fi
+             NEEDED_BOOT=true
+             ;;
+         "dead")
