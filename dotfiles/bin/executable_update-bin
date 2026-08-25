@@ -21,7 +21,7 @@ Usage:
     $(basename "$0") <args> [binary...|all]
 
     Binaries:
-        jq, glab, claude, yq, rtk, kubelogin, sops
+        jq, glab, claude, yq, rtk, kubelogin, sops, bats
 
     Arguments:
         -d|--debug      : Print debug statements
@@ -42,6 +42,7 @@ declare -A TOOL_API_URL=(
     [rtk]="https://api.github.com/repos/rtk-ai/rtk/releases?per_page=100"
     [kubelogin]="https://api.github.com/repos/Azure/kubelogin/releases"
     [sops]="https://api.github.com/repos/getsops/sops/releases"
+    [bats]="https://api.github.com/repos/bats-core/bats-core/releases"
 )
 declare -A TOOL_VERSION_FILTER=(
     [jq]='.tag_name'
@@ -51,6 +52,7 @@ declare -A TOOL_VERSION_FILTER=(
     [rtk]='.tag_name'
     [kubelogin]='.tag_name'
     [sops]='.tag_name'
+    [bats]='.tag_name'
 )
 declare -A TOOL_DATE_FILTER=(
     [jq]='.published_at'
@@ -60,6 +62,7 @@ declare -A TOOL_DATE_FILTER=(
     [rtk]='.published_at'
     [kubelogin]='.published_at'
     [sops]='.published_at'
+    [bats]='.published_at'
 )
 declare -A TOOL_RELEASE_URL=(
     [jq]="https://github.com/jqlang/jq/releases"
@@ -69,6 +72,7 @@ declare -A TOOL_RELEASE_URL=(
     [rtk]="https://github.com/rtk-ai/rtk/releases"
     [kubelogin]="https://github.com/Azure/kubelogin/releases"
     [sops]="https://github.com/getsops/sops/releases"
+    [bats]="https://github.com/bats-core/bats-core/releases"
 )
 # Optional per-tool jq filter applied to each release before the version/date
 # projection; defaults to '.' (keep everything). rtk publishes its rc builds as
@@ -178,6 +182,15 @@ function current_version_sops() {
         # --disable-version-check stops `sops --version` from calling GitHub just to
         # append "(latest)" to the line; the version is $2 with or without it.
         printf "v%s" "$(sops --disable-version-check --version 2>/dev/null | awk '{print $2}')"
+    else
+        echo "null"
+    fi
+}
+
+function current_version_bats() {
+    if command -v bats >/dev/null 2>&1; then
+        # `bats --version` prints "Bats 1.14.0" — no leading v on the number.
+        printf "v%s" "$(bats --version | awk '{print $2}')"
     else
         echo "null"
     fi
@@ -340,6 +353,38 @@ function install_rtk() {
 
     install -m 0755 "${tmp_dir}/rtk" "${dest_binary}"
     log.info "Installed rtk ${version} to ${dest_binary}"
+
+    rm -rf "${tmp_dir}"
+}
+
+function install_bats() {
+    local version="$1"
+    local tmp_dir="/tmp/bats-install"
+    local prefix="$HOME/.local"
+    local install_dir="$HOME/bin"
+    local dest_binary="${install_dir}/bats"
+    local tarball url src_dir
+
+    # bats publishes no release assets — it is pure shell, shipped as the source
+    # tarball and installed by its own install.sh, which lays down bin/bats plus
+    # a libexec/ tree. So it gets a prefix install and a symlink into ~/bin
+    # rather than a single dropped-in binary like the other tools.
+    rm -rf "${tmp_dir}"
+    mkdir -p "${tmp_dir}" "${install_dir}" "${prefix}"
+
+    tarball="bats-core-${version}.tar.gz"
+    url="https://codeload.github.com/bats-core/bats-core/tar.gz/refs/tags/${version}"
+
+    log.debug "url: ${url}"
+
+    curl -s -fSL -o "${tmp_dir}/${tarball}" "$url"
+    tar -xzf "${tmp_dir}/${tarball}" -C "${tmp_dir}"
+
+    src_dir="${tmp_dir}/bats-core-${version#v}"
+    "${src_dir}/install.sh" "${prefix}" >/dev/null
+
+    ln -sf "${prefix}/bin/bats" "${dest_binary}"
+    log.info "Installed bats ${version} to ${prefix} (linked at ${dest_binary})"
 
     rm -rf "${tmp_dir}"
 }
