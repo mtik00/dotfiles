@@ -38,10 +38,15 @@ services:
       #- /path/to/second/hard/disk:/storage2 # Uncomment to create a virtual second hard disk and mount it within the Windows VM. Ensure 'DISK2_SIZE' is specified above.
       - ./oem:/oem # Enables automatic post-install execution of 'oem/install.bat', applying Windows registry modifications contained within 'oem/RDPApps.reg'.
       #- /path/to/windows/install/media.iso:/custom.iso # Uncomment to use a custom Windows ISO. If specified, 'VERSION' (e.g. 'tiny11') will be ignored.
+      # USB passthrough (Dymo LabelWriter Turbo): bind-mount the whole /dev/bus/usb
+      # DIRECTORY as a single live mount. Do NOT put this under 'devices:' -
+      # podman-compose expands a device dir into one hard-coded rbind per node at
+      # create time, so any USB re-enumeration (reboot or replug) then makes the
+      # container fail to start with 'crun: cannot stat /dev/bus/usb/00X/0YY'.
+      - /dev/bus/usb:/dev/bus/usb
     devices:
       - /dev/kvm # Enable KVM.
       - /dev/net/tun # Enable tuntap
-      - /dev/bus/usb # Enable USB passthrough (Dymo LabelWriter Turbo).
       # Uncomment to mount a disk directly within the Windows VM.
       # WARNING: /dev/sdX paths may change after reboot. Use persistent identifiers!
       # NOTE: 'disk1' will be mounted as the main drive. THIS DISK WILL BE FORMATTED BY DOCKER.
