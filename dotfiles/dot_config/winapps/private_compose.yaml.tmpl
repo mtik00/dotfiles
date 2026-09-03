@@ -1,4 +1,3 @@
-{{- if ne $config "work-laptop"}}
 # WARNING: THIS FILE IS MANAGED BY CHEZMOI (source: dot_config/winapps/compose.yaml.tmpl)
 # For documentation, FAQ, additional configuration options and technical help, visit: https://github.com/dockur/windows
 
@@ -56,4 +55,3 @@ services:
       # - /dev/disk/by-id/<id>:/disk2
     group_add:
       - keep-groups # to make /dev/kvm and /dev/bus/usb work with rootless podman. needs "crun" installed, "runc" will not work! Add your user to the 'kvm'/'lp' group or another that can access these devices.
-{{- end }}
