@@ -21,7 +21,7 @@ Usage:
     $(basename "$0") <args> [binary...|all]
 
     Binaries:
-        jq, glab, claude, yq, rtk, kubelogin, sops, bats
+        jq, glab, claude, yq, rtk, kubelogin, sops, bats, codex
 
     Arguments:
         -d|--debug      : Print debug statements
@@ -43,6 +43,9 @@ declare -A TOOL_API_URL=(
     [kubelogin]="https://api.github.com/repos/Azure/kubelogin/releases"
     [sops]="https://api.github.com/repos/getsops/sops/releases"
     [bats]="https://api.github.com/repos/bats-core/bats-core/releases"
+    # per_page is raised because codex ships alpha builds far more often than
+    # stable ones, and only the stable tags survive TOOL_RELEASE_SELECT.
+    [codex]="https://api.github.com/repos/openai/codex/releases?per_page=100"
 )
 declare -A TOOL_VERSION_FILTER=(
     [jq]='.tag_name'
@@ -53,6 +56,7 @@ declare -A TOOL_VERSION_FILTER=(
     [kubelogin]='.tag_name'
     [sops]='.tag_name'
     [bats]='.tag_name'
+    [codex]='.tag_name'
 )
 declare -A TOOL_DATE_FILTER=(
     [jq]='.published_at'
@@ -63,6 +67,7 @@ declare -A TOOL_DATE_FILTER=(
     [kubelogin]='.published_at'
     [sops]='.published_at'
     [bats]='.published_at'
+    [codex]='.published_at'
 )
 declare -A TOOL_RELEASE_URL=(
     [jq]="https://github.com/jqlang/jq/releases"
@@ -73,6 +78,7 @@ declare -A TOOL_RELEASE_URL=(
     [kubelogin]="https://github.com/Azure/kubelogin/releases"
     [sops]="https://github.com/getsops/sops/releases"
     [bats]="https://github.com/bats-core/bats-core/releases"
+    [codex]="https://github.com/openai/codex/releases"
 )
 # Optional per-tool jq filter applied to each release before the version/date
 # projection; defaults to '.' (keep everything). rtk publishes its rc builds as
@@ -80,6 +86,9 @@ declare -A TOOL_RELEASE_URL=(
 # and would rank it above stable v0.44.2, so those have to be dropped here.
 declare -A TOOL_RELEASE_SELECT=(
     [rtk]='select(.prerelease == false)'
+    # codex tags alphas as rust-v0.154.0-alpha.2 — version_number() reads that as
+    # 0.154.0 and would rank it above stable rust-v0.153.1, so drop prereleases.
+    [codex]='select(.prerelease == false)'
 )
 
 function usage() {
@@ -191,6 +200,15 @@ function current_version_bats() {
     if command -v bats >/dev/null 2>&1; then
         # `bats --version` prints "Bats 1.14.0" — no leading v on the number.
         printf "v%s" "$(bats --version | awk '{print $2}')"
+    else
+        echo "null"
+    fi
+}
+
+function current_version_codex() {
+    if command -v codex >/dev/null 2>&1; then
+        # `codex --version` prints "codex-cli 0.153.1"; tags are "rust-v0.153.1".
+        printf "rust-v%s" "$(codex --version | awk '{print $NF}')"
     else
         echo "null"
     fi
@@ -353,6 +371,40 @@ function install_rtk() {
 
     install -m 0755 "${tmp_dir}/rtk" "${dest_binary}"
     log.info "Installed rtk ${version} to ${dest_binary}"
+
+    rm -rf "${tmp_dir}"
+}
+
+function install_codex() {
+    local version="$1"
+    local tmp_dir="/tmp/codex-install"
+    local install_dir="$HOME/bin"
+    local dest_binary="${install_dir}/codex"
+    local target tarball url
+
+    # Assets are named by rust target triple; both linux arches ship musl.
+    case "$ARCH" in
+        amd64) target="x86_64-unknown-linux-musl" ;;
+        arm64) target="aarch64-unknown-linux-musl" ;;
+        *)     log.error "No codex release asset for ${ARCH}"; return 1 ;;
+    esac
+
+    rm -rf "${tmp_dir}"
+    mkdir -p "${tmp_dir}" "${install_dir}"
+
+    # The asset name carries no version — the tag in the path selects it — and the
+    # single file inside the tarball keeps the target-triple name.
+    tarball="codex-${target}.tar.gz"
+    url=$(github_asset_url codex "${version}" "${tarball}")
+
+    log.debug "tarball: ${tarball}"
+    log.debug "url: ${url}"
+
+    curl -s -fSL -o "${tmp_dir}/${tarball}" "$url"
+    tar -xzf "${tmp_dir}/${tarball}" -C "${tmp_dir}"
+
+    install -m 0755 "${tmp_dir}/codex-${target}" "${dest_binary}"
+    log.info "Installed codex ${version} to ${dest_binary}"
 
     rm -rf "${tmp_dir}"
 }
