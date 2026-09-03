@@ -20,12 +20,14 @@
     github_email = {{ $github_email | quote }}
     install_docker = {{ $install_docker }}
     install_k8s = {{ $install_k8s }}
-    winapps_rdp_username = {{ $winapps_rdp_username | quote }}
-    winapps_rdp_password = {{ $winapps_rdp_password | quote }}
     install_op = false
     github_askpass = false
     wsl = {{ contains "WSL" .chezmoi.kernel.osrelease }}
     personal_code_dir = "{{ .chezmoi.homeDir }}/code{{ if eq $config "work-laptop" }}/personal{{ end }}"
+{{- if ne $config "work-laptop"}}
+    winapps_rdp_username = {{ $winapps_rdp_username | quote }}
+    winapps_rdp_password = {{ $winapps_rdp_password | quote }}
+{{- end }}
 
 [scriptEnv]
 {{- if eq $config "work-laptop"}}
