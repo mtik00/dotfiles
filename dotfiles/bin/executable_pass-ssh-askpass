@@ -15,7 +15,7 @@ passphrases.  You can tell ssh to use this file first with:
 
 def main():
     args = "\n".join([str(x) for x in sys.argv])
-    with open("/home/timcfadd/.pass-ssh-askpass.log", "w") as fh:
+    with open("/home/timcfadd/.pass-ssh-askpass.log", "a") as fh:
         fh.write(args)
 
     if "id_rsa" in args:
@@ -32,6 +32,13 @@ def main():
         password = getoutput("pass ssh/gctest-mcfaddent")
     elif "mcfaddent@10.100.10.10" in args:
         password = getoutput("pass ssh/gctest-mcfaddent")
+    elif (
+        "mcfaddent@prod-bastion-ext-nlb-090ae8e899df769d.elb.us-gov-west-1.amazonaws.com"
+        in args
+    ):
+        password = getoutput("pass ssh/uprod-mcfaddent")
+    elif "mcfaddent@10.18.11.11" in args:
+        password = getoutput("pass ssh/uprod-mcfaddent")
     elif "dso@10.100" in args:
         password = getoutput("pass ssh/udev-dso")
     else:
