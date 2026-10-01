@@ -21,7 +21,7 @@ Usage:
     $(basename "$0") <args> [binary...|all]
 
     Binaries:
-        jq, glab, claude, yq, rtk, kubelogin, sops, bats, codex
+        jq, glab, claude, yq, rtk, kubelogin, sops, bats, codex, regclient, skopeo, oras
 
     Arguments:
         -d|--debug      : Print debug statements
@@ -46,6 +46,9 @@ declare -A TOOL_API_URL=(
     # per_page is raised because codex ships alpha builds far more often than
     # stable ones, and only the stable tags survive TOOL_RELEASE_SELECT.
     [codex]="https://api.github.com/repos/openai/codex/releases?per_page=100"
+    [regclient]="https://api.github.com/repos/regclient/regclient/releases"
+    [skopeo]="https://api.github.com/repos/podman-container-tools/skopeo/releases"
+    [oras]="https://api.github.com/repos/oras-project/oras/releases"
 )
 declare -A TOOL_VERSION_FILTER=(
     [jq]='.tag_name'
@@ -57,6 +60,9 @@ declare -A TOOL_VERSION_FILTER=(
     [sops]='.tag_name'
     [bats]='.tag_name'
     [codex]='.tag_name'
+    [regclient]='.tag_name'
+    [skopeo]='.tag_name'
+    [oras]='.tag_name'
 )
 declare -A TOOL_DATE_FILTER=(
     [jq]='.published_at'
@@ -68,6 +74,9 @@ declare -A TOOL_DATE_FILTER=(
     [sops]='.published_at'
     [bats]='.published_at'
     [codex]='.published_at'
+    [regclient]='.published_at'
+    [skopeo]='.published_at'
+    [oras]='.published_at'
 )
 declare -A TOOL_RELEASE_URL=(
     [jq]="https://github.com/jqlang/jq/releases"
@@ -79,6 +88,9 @@ declare -A TOOL_RELEASE_URL=(
     [sops]="https://github.com/getsops/sops/releases"
     [bats]="https://github.com/bats-core/bats-core/releases"
     [codex]="https://github.com/openai/codex/releases"
+    [regclient]="https://github.com/regclient/regclient/releases"
+    [skopeo]="https://github.com/podman-container-tools/skopeo/releases"
+    [oras]="https://github.com/oras-project/oras/releases"
 )
 # Optional per-tool jq filter applied to each release before the version/date
 # projection; defaults to '.' (keep everything). rtk publishes its rc builds as
@@ -88,7 +100,13 @@ declare -A TOOL_RELEASE_SELECT=(
     [rtk]='select(.prerelease == false)'
     # codex tags alphas as rust-v0.154.0-alpha.2 — version_number() reads that as
     # 0.154.0 and would rank it above stable rust-v0.153.1, so drop prereleases.
-    [codex]='select(.prerelease == false)'
+    # The repo also publishes python-vX.Y.Z SDK releases that carry NO assets at
+    # all; version_number() sees the same X.Y.Z and can pick one, giving a 404 on
+    # the tarball. Only rust-v* tags ship the codex binary.
+    [codex]='select(.prerelease == false and (.tag_name | startswith("rust-v")))'
+    [regclient]='select(.prerelease == false)'
+    [skopeo]='select(.prerelease == false)'
+    [oras]='select(.prerelease == false)'
 )
 
 function usage() {
@@ -217,6 +235,31 @@ function current_version_codex() {
 function current_version_rtk() {
     if command -v rtk >/dev/null 2>&1; then
         printf "v%s" "$(rtk --version | awk '{print $2}')"
+    else
+        echo "null"
+    fi
+}
+
+function current_version_regclient() {
+    if command -v regctl >/dev/null 2>&1; then
+        regctl version --format '{{.VCSTag}}'
+    else
+        echo "null"
+    fi
+}
+
+function current_version_skopeo() {
+    if command -v skopeo >/dev/null 2>&1; then
+        printf "v%s" "$(skopeo --version | awk '{print $3}')"
+    else
+        echo "null"
+    fi
+}
+
+function current_version_oras() {
+    if command -v oras >/dev/null 2>&1; then
+        # `oras version` prints a "Version:" line with no leading v on the number.
+        printf "v%s" "$(oras version | awk '/^Version:/ {print $2}')"
     else
         echo "null"
     fi
@@ -437,6 +480,87 @@ function install_bats() {
 
     ln -sf "${prefix}/bin/bats" "${dest_binary}"
     log.info "Installed bats ${version} to ${prefix} (linked at ${dest_binary})"
+
+    rm -rf "${tmp_dir}"
+}
+
+function install_regclient() {
+    local version="$1"
+    local install_dir="$HOME/bin"
+    local bin url
+
+    mkdir -p "$install_dir"
+    # One release ships three separate bare binaries; regctl alone answers the version check.
+    for bin in regctl regsync regbot; do
+        url=$(github_asset_url regclient "${version}" "${bin}-linux-${ARCH}")
+        log.debug "${url}"
+        curl -s -fSL -o "${install_dir}/${bin}" "$url"
+        chmod +x "${install_dir}/${bin}"
+    done
+    log.info "Installed regctl, regsync, regbot ${version} to ${install_dir}"
+}
+
+function install_skopeo() {
+    local version="$1"
+    local tmp_dir="/tmp/skopeo-install"
+    local install_dir="$HOME/bin"
+    local dest_binary="${install_dir}/skopeo"
+    local tarball url src_dir
+
+    if ! command -v go >/dev/null 2>&1; then
+        log.error "skopeo is built from source and needs go on PATH"
+        return 1
+    fi
+
+    # skopeo publishes no release assets, so build a static binary from the
+    # source tarball. These tags drop the gpgme/btrfs/devicemapper C deps that
+    # would otherwise force cgo; they match the upstream cross-build targets.
+    rm -rf "${tmp_dir}"
+    mkdir -p "${tmp_dir}" "${install_dir}"
+
+    tarball="skopeo-${version}.tar.gz"
+    url="https://codeload.github.com/podman-container-tools/skopeo/tar.gz/refs/tags/${version}"
+
+    log.debug "url: ${url}"
+
+    curl -s -fSL -o "${tmp_dir}/${tarball}" "$url"
+    tar -xzf "${tmp_dir}/${tarball}" -C "${tmp_dir}"
+
+    src_dir="${tmp_dir}/skopeo-${version#v}"
+    (
+        cd "${src_dir}"
+        CGO_ENABLED=0 go build -mod=vendor \
+            -tags "containers_image_openpgp exclude_graphdriver_btrfs exclude_graphdriver_devicemapper" \
+            -ldflags "-s -w" -o "${tmp_dir}/skopeo" ./cmd/skopeo
+    )
+
+    install -m 0755 "${tmp_dir}/skopeo" "${dest_binary}"
+    log.info "Installed skopeo ${version} to ${dest_binary}"
+
+    rm -rf "${tmp_dir}"
+}
+
+function install_oras() {
+    local version="$1"
+    local tmp_dir="/tmp/oras-install"
+    local install_dir="$HOME/bin"
+    local dest_binary="${install_dir}/oras"
+    local tarball url
+
+    rm -rf "${tmp_dir}"
+    mkdir -p "${tmp_dir}" "${install_dir}"
+
+    tarball="oras_${version#v}_linux_${ARCH}.tar.gz"
+    url=$(github_asset_url oras "${version}" "${tarball}")
+
+    log.debug "tarball: ${tarball}"
+    log.debug "url: ${url}"
+
+    curl -s -fSL -o "${tmp_dir}/${tarball}" "$url"
+    tar -xzf "${tmp_dir}/${tarball}" -C "${tmp_dir}"
+
+    install -m 0755 "${tmp_dir}/oras" "${dest_binary}"
+    log.info "Installed oras ${version} to ${dest_binary}"
 
     rm -rf "${tmp_dir}"
 }
