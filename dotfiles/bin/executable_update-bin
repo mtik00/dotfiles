@@ -21,7 +21,7 @@ Usage:
     $(basename "$0") <args> [binary...|all]
 
     Binaries:
-        jq, glab, claude, yq, rtk, kubelogin, sops, bats, codex, regclient, skopeo, oras
+        jq, glab, claude, yq, rtk, kubelogin, sops, bats, codex, regclient, skopeo, oras, gum
 
     Arguments:
         -d|--debug      : Print debug statements
@@ -49,6 +49,7 @@ declare -A TOOL_API_URL=(
     [regclient]="https://api.github.com/repos/regclient/regclient/releases"
     [skopeo]="https://api.github.com/repos/podman-container-tools/skopeo/releases"
     [oras]="https://api.github.com/repos/oras-project/oras/releases"
+    [gum]="https://api.github.com/repos/charmbracelet/gum/releases"
 )
 declare -A TOOL_VERSION_FILTER=(
     [jq]='.tag_name'
@@ -63,6 +64,7 @@ declare -A TOOL_VERSION_FILTER=(
     [regclient]='.tag_name'
     [skopeo]='.tag_name'
     [oras]='.tag_name'
+    [gum]='.tag_name'
 )
 declare -A TOOL_DATE_FILTER=(
     [jq]='.published_at'
@@ -77,6 +79,7 @@ declare -A TOOL_DATE_FILTER=(
     [regclient]='.published_at'
     [skopeo]='.published_at'
     [oras]='.published_at'
+    [gum]='.published_at'
 )
 declare -A TOOL_RELEASE_URL=(
     [jq]="https://github.com/jqlang/jq/releases"
@@ -91,6 +94,7 @@ declare -A TOOL_RELEASE_URL=(
     [regclient]="https://github.com/regclient/regclient/releases"
     [skopeo]="https://github.com/podman-container-tools/skopeo/releases"
     [oras]="https://github.com/oras-project/oras/releases"
+    [gum]="https://github.com/charmbracelet/gum/releases"
 )
 # Optional per-tool jq filter applied to each release before the version/date
 # projection; defaults to '.' (keep everything). rtk publishes its rc builds as
@@ -107,6 +111,7 @@ declare -A TOOL_RELEASE_SELECT=(
     [regclient]='select(.prerelease == false)'
     [skopeo]='select(.prerelease == false)'
     [oras]='select(.prerelease == false)'
+    [gum]='select(.prerelease == false)'
 )
 
 function usage() {
@@ -561,6 +566,47 @@ function install_oras() {
 
     install -m 0755 "${tmp_dir}/oras" "${dest_binary}"
     log.info "Installed oras ${version} to ${dest_binary}"
+
+    rm -rf "${tmp_dir}"
+}
+
+function current_version_gum() {
+    if command -v gum >/dev/null 2>&1; then
+        gum --version | awk '{print $3}'
+    else
+        echo "null"
+    fi
+}
+
+function install_gum() {
+    local version="$1"
+    local tmp_dir="/tmp/gum-install"
+    local install_dir="$HOME/bin"
+    local dest_binary="${install_dir}/gum"
+    local gum_arch name tarball url
+
+    # Assets use x86_64 rather than amd64, and a capitalised Linux.
+    case "$ARCH" in
+        amd64) gum_arch="x86_64" ;;
+        arm64) gum_arch="arm64" ;;
+        *)     log.error "No gum release asset for ${ARCH}"; return 1 ;;
+    esac
+
+    rm -rf "${tmp_dir}"
+    mkdir -p "${tmp_dir}" "${install_dir}"
+
+    name="gum_${version#v}_Linux_${gum_arch}"
+    tarball="${name}.tar.gz"
+    url=$(github_asset_url gum "${version}" "${tarball}")
+
+    log.debug "tarball: ${tarball}"
+    log.debug "url: ${url}"
+
+    curl -s -fSL -o "${tmp_dir}/${tarball}" "$url"
+    tar -xzf "${tmp_dir}/${tarball}" -C "${tmp_dir}"
+
+    install -m 0755 "${tmp_dir}/${name}/gum" "${dest_binary}"
+    log.info "Installed gum ${version} to ${dest_binary}"
 
     rm -rf "${tmp_dir}"
 }
