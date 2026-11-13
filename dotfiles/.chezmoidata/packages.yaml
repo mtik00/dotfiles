@@ -29,6 +29,7 @@ packages:
       - direnv
       - bind
       - fzf
+      - ghostty
       - git
       - tk
       - htop
