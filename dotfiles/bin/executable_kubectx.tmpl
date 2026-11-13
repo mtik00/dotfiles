@@ -1,0 +1,68 @@
+{{- if eq .config "work-laptop" -}}
+#!/bin/sh
+set -eu
+
+usage() {
+  printf "Usage: %s [-h] [filter]\n" "${0##*/}" >&2
+  printf "Pick a kube context with gum and make it current.\n" >&2
+  printf "If filter matches exactly one context, switch without a prompt.\n" >&2
+  exit 2
+}
+
+while getopts ":h" opt; do
+  case "${opt}" in
+    *) usage ;;
+  esac
+done
+shift $((OPTIND - 1))
+
+for cmd in gum kubectl; do
+  if ! command -v "${cmd}" > /dev/null 2>&1; then
+    printf "Error: %s not found in PATH\n" "${cmd}" >&2
+    exit 1
+  fi
+done
+
+count_lines() {
+  if [ -z "$1" ]; then
+    echo 0
+  else
+    printf "%s\n" "$1" | grep -c .
+  fi
+}
+
+contexts="$(kubectl config get-contexts -o name | grep . || true)"
+
+if [ -z "${contexts}" ]; then
+  printf "Error: no kube contexts found\n" >&2
+  exit 1
+fi
+
+current="$(kubectl config current-context 2> /dev/null || true)"
+filter="${1:-}"
+
+if [ -n "${filter}" ]; then
+  matches="$(printf "%s\n" "${contexts}" | grep -iF -- "${filter}" || true)"
+  case "$(count_lines "${matches}")" in
+    0)
+      printf "Error: no context matches '%s'\n" "${filter}" >&2
+      exit 1
+      ;;
+    1)
+      kubectl config use-context "${matches}"
+      exit 0
+      ;;
+  esac
+  contexts="${matches}"
+fi
+
+if [ "$(count_lines "${contexts}")" -gt 10 ]; then
+  selected="$(printf "%s\n" "${contexts}" | gum filter --placeholder "Pick a context..." --header "Current: ${current:-none}")" || exit 1
+else
+  selected="$(printf "%s\n" "${contexts}" | gum choose --header "Current: ${current:-none}" --selected "${current}")" || exit 1
+fi
+
+[ -n "${selected}" ] || exit 1
+
+kubectl config use-context "${selected}"
+{{ end -}}
