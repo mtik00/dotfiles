@@ -21,7 +21,7 @@ Usage:
     $(basename "$0") <args> [binary...|all]
 
     Binaries:
-        jq, glab, claude, yq, rtk, kubelogin, sops, bats, codex, regclient, skopeo, oras, gum
+        jq, glab, claude, yq, rtk, kubelogin, sops, bats, codex, regclient, skopeo, oras, gum, helm, helm-diff
 
     Arguments:
         -d|--debug      : Print debug statements
@@ -50,6 +50,8 @@ declare -A TOOL_API_URL=(
     [skopeo]="https://api.github.com/repos/podman-container-tools/skopeo/releases"
     [oras]="https://api.github.com/repos/oras-project/oras/releases"
     [gum]="https://api.github.com/repos/charmbracelet/gum/releases"
+    [helm]="https://api.github.com/repos/helm/helm/releases"
+    [helm-diff]="https://api.github.com/repos/databus23/helm-diff/releases"
 )
 declare -A TOOL_VERSION_FILTER=(
     [jq]='.tag_name'
@@ -65,6 +67,8 @@ declare -A TOOL_VERSION_FILTER=(
     [skopeo]='.tag_name'
     [oras]='.tag_name'
     [gum]='.tag_name'
+    [helm]='.tag_name'
+    [helm-diff]='.tag_name'
 )
 declare -A TOOL_DATE_FILTER=(
     [jq]='.published_at'
@@ -80,6 +84,8 @@ declare -A TOOL_DATE_FILTER=(
     [skopeo]='.published_at'
     [oras]='.published_at'
     [gum]='.published_at'
+    [helm]='.published_at'
+    [helm-diff]='.published_at'
 )
 declare -A TOOL_RELEASE_URL=(
     [jq]="https://github.com/jqlang/jq/releases"
@@ -95,6 +101,8 @@ declare -A TOOL_RELEASE_URL=(
     [skopeo]="https://github.com/podman-container-tools/skopeo/releases"
     [oras]="https://github.com/oras-project/oras/releases"
     [gum]="https://github.com/charmbracelet/gum/releases"
+    [helm]="https://github.com/helm/helm/releases"
+    [helm-diff]="https://github.com/databus23/helm-diff/releases"
 )
 # Optional per-tool jq filter applied to each release before the version/date
 # projection; defaults to '.' (keep everything). rtk publishes its rc builds as
@@ -112,6 +120,8 @@ declare -A TOOL_RELEASE_SELECT=(
     [skopeo]='select(.prerelease == false)'
     [oras]='select(.prerelease == false)'
     [gum]='select(.prerelease == false)'
+    [helm]='select(.prerelease == false)'
+    [helm-diff]='select(.prerelease == false)'
 )
 
 function usage() {
@@ -611,13 +621,108 @@ function install_gum() {
     rm -rf "${tmp_dir}"
 }
 
+function current_version_helm() {
+    if command -v helm >/dev/null 2>&1; then
+        # `helm version --short` prints "v3.19.4+g7cfb6e4".
+        helm version --short | cut -d+ -f1
+    else
+        echo "null"
+    fi
+}
+
+function install_helm() {
+    local version="$1"
+    local tmp_dir="/tmp/helm-install"
+    local install_dir="$HOME/bin"
+    local dest_binary="${install_dir}/helm"
+    local tarball url
+
+    rm -rf "${tmp_dir}"
+    mkdir -p "${tmp_dir}" "${install_dir}"
+
+    # The GitHub release holds only signatures; the binaries live on get.helm.sh.
+    tarball="helm-${version}-linux-${ARCH}.tar.gz"
+    url="https://get.helm.sh/${tarball}"
+
+    log.debug "url: ${url}"
+
+    curl -s -fSL -o "${tmp_dir}/${tarball}" "$url"
+    tar -xzf "${tmp_dir}/${tarball}" -C "${tmp_dir}"
+
+    install -m 0755 "${tmp_dir}/linux-${ARCH}/helm" "${dest_binary}"
+    log.info "Installed helm ${version} to ${dest_binary}"
+
+    rm -rf "${tmp_dir}"
+}
+
+function current_version_helm-diff() {
+    local version
+    if command -v helm >/dev/null 2>&1 \
+        && version=$(helm plugin list 2>/dev/null | awk '$1 == "diff" {print $2}') \
+        && [[ -n "${version}" ]]; then
+        printf "v%s" "${version}"
+    else
+        echo "null"
+    fi
+}
+
+function install_helm-diff() {
+    local version="$1"
+    local tmp_dir="/tmp/helm-diff-install"
+    local plugins_dir dest_dir tarball url
+
+    if ! command -v helm >/dev/null 2>&1; then
+        log.error "helm-diff is a helm plugin and needs helm on PATH"
+        return 1
+    fi
+
+    plugins_dir=$(helm env HELM_PLUGINS)
+    dest_dir="${plugins_dir}/helm-diff"
+
+    rm -rf "${tmp_dir}"
+    mkdir -p "${tmp_dir}" "${plugins_dir}"
+
+    # The prebuilt tarball unpacks to diff/ with plugin.yaml and bin/diff, so it
+    # drops into the plugins dir as-is and skips the plugin's install hook.
+    tarball="helm-diff-linux-${ARCH}.tgz"
+    url=$(github_asset_url helm-diff "${version}" "${tarball}")
+
+    log.debug "url: ${url}"
+
+    curl -s -fSL -o "${tmp_dir}/${tarball}" "$url"
+    tar -xzf "${tmp_dir}/${tarball}" -C "${tmp_dir}"
+
+    rm -rf "${dest_dir}"
+    mv "${tmp_dir}/diff" "${dest_dir}"
+    log.info "Installed helm-diff ${version} to ${dest_dir}"
+
+    rm -rf "${tmp_dir}"
+}
+
 # --- generic update engine ---------------------------------------------------
 
 function fetch_releases() {
     local tool="$1"
     local select_filter="${TOOL_RELEASE_SELECT[$tool]:-.}"
-    curl -s -H "Accept: application/json" "${TOOL_API_URL[$tool]}" \
-        | jq -r ".[] | ${select_filter} | [${TOOL_VERSION_FILTER[$tool]}, ${TOOL_DATE_FILTER[$tool]}] | @tsv"
+    local url="${TOOL_API_URL[$tool]}"
+    local -a curl_args=(-s -H "Accept: application/json")
+    local body message
+
+    # Unauthenticated GitHub API calls share a 60/hour limit per source IP.
+    if [[ "${url}" == https://api.github.com/* && -n "${GITHUB_TOKEN:-}" ]]; then
+        curl_args+=(-H "Authorization: Bearer ${GITHUB_TOKEN}")
+    fi
+
+    body=$(curl "${curl_args[@]}" "${url}")
+
+    # Errors (rate limit, bad token) come back as an object, not a release array.
+    if ! jq -e 'type == "array"' >/dev/null 2>&1 <<<"${body}"; then
+        message=$(jq -r '.message? // "unparseable response"' 2>/dev/null <<<"${body}" || echo "unparseable response")
+        log.error "${tool}: release API error: ${message//%/%%}" >&2
+        return 0
+    fi
+
+    jq -r ".[] | ${select_filter} | [${TOOL_VERSION_FILTER[$tool]}, ${TOOL_DATE_FILTER[$tool]}] | @tsv" <<<"${body}"
 }
 
 # Strip any tag prefix so versions compare numerically: v1.112.0 -> 1.112.0,
