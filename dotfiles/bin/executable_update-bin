@@ -21,7 +21,7 @@ Usage:
     $(basename "$0") <args> [binary...|all]
 
     Binaries:
-        jq, glab, claude, yq, rtk, kubelogin, sops, bats, codex, regclient, skopeo, oras, gum, helm, helm-diff
+        jq, glab, claude, yq, rtk, kubelogin, sops, bats, codex, regclient, skopeo, oras, gum, helm, helm-diff, kyverno
 
     Arguments:
         -d|--debug      : Print debug statements
@@ -52,6 +52,8 @@ declare -A TOOL_API_URL=(
     [gum]="https://api.github.com/repos/charmbracelet/gum/releases"
     [helm]="https://api.github.com/repos/helm/helm/releases"
     [helm-diff]="https://api.github.com/repos/databus23/helm-diff/releases"
+    # per_page is raised because kyverno cuts several rc builds per stable release.
+    [kyverno]="https://api.github.com/repos/kyverno/kyverno/releases?per_page=100"
 )
 declare -A TOOL_VERSION_FILTER=(
     [jq]='.tag_name'
@@ -69,6 +71,7 @@ declare -A TOOL_VERSION_FILTER=(
     [gum]='.tag_name'
     [helm]='.tag_name'
     [helm-diff]='.tag_name'
+    [kyverno]='.tag_name'
 )
 declare -A TOOL_DATE_FILTER=(
     [jq]='.published_at'
@@ -86,6 +89,7 @@ declare -A TOOL_DATE_FILTER=(
     [gum]='.published_at'
     [helm]='.published_at'
     [helm-diff]='.published_at'
+    [kyverno]='.published_at'
 )
 declare -A TOOL_RELEASE_URL=(
     [jq]="https://github.com/jqlang/jq/releases"
@@ -103,6 +107,7 @@ declare -A TOOL_RELEASE_URL=(
     [gum]="https://github.com/charmbracelet/gum/releases"
     [helm]="https://github.com/helm/helm/releases"
     [helm-diff]="https://github.com/databus23/helm-diff/releases"
+    [kyverno]="https://github.com/kyverno/kyverno/releases"
 )
 # Optional per-tool jq filter applied to each release before the version/date
 # projection; defaults to '.' (keep everything). rtk publishes its rc builds as
@@ -122,6 +127,7 @@ declare -A TOOL_RELEASE_SELECT=(
     [gum]='select(.prerelease == false)'
     [helm]='select(.prerelease == false)'
     [helm-diff]='select(.prerelease == false)'
+    [kyverno]='select(.prerelease == false)'
 )
 
 function usage() {
@@ -695,6 +701,47 @@ function install_helm-diff() {
     rm -rf "${dest_dir}"
     mv "${tmp_dir}/diff" "${dest_dir}"
     log.info "Installed helm-diff ${version} to ${dest_dir}"
+
+    rm -rf "${tmp_dir}"
+}
+
+function current_version_kyverno() {
+    if command -v kyverno >/dev/null 2>&1; then
+        # The "Version:" line carries a leading v on some releases and not others.
+        printf "v%s" "$(kyverno version | awk '/^Version:/ {sub(/^v/, "", $2); print $2}')"
+    else
+        echo "null"
+    fi
+}
+
+function install_kyverno() {
+    local version="$1"
+    local tmp_dir="/tmp/kyverno-install"
+    local install_dir="$HOME/bin"
+    local dest_binary="${install_dir}/kyverno"
+    local kyverno_arch tarball url
+
+    # Assets use x86_64 rather than amd64.
+    case "$ARCH" in
+        amd64) kyverno_arch="x86_64" ;;
+        arm64) kyverno_arch="arm64" ;;
+        *)     log.error "No kyverno release asset for ${ARCH}"; return 1 ;;
+    esac
+
+    rm -rf "${tmp_dir}"
+    mkdir -p "${tmp_dir}" "${install_dir}"
+
+    tarball="kyverno-cli_${version}_linux_${kyverno_arch}.tar.gz"
+    url=$(github_asset_url kyverno "${version}" "${tarball}")
+
+    log.debug "tarball: ${tarball}"
+    log.debug "url: ${url}"
+
+    curl -s -fSL -o "${tmp_dir}/${tarball}" "$url"
+    tar -xzf "${tmp_dir}/${tarball}" -C "${tmp_dir}"
+
+    install -m 0755 "${tmp_dir}/kyverno" "${dest_binary}"
+    log.info "Installed kyverno ${version} to ${dest_binary}"
 
     rm -rf "${tmp_dir}"
 }
